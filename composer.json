@@ -1,0 +1,21 @@
+{
+	"name": "razuna/razuna-wordpress",
+	"description": "Razuna DAM for WordPress — browse, search and embed Razuna digital assets over OAuth.",
+	"type": "wordpress-plugin",
+	"license": "GPL-2.0-or-later",
+	"require": {
+		"php": ">=7.4"
+	},
+	"require-dev": {
+		"squizlabs/php_codesniffer": "^3.9",
+		"wp-coding-standards/wpcs": "^3.1"
+	},
+	"scripts": {
+		"lint": "phpcs --standard=WordPress --extensions=php --ignore=*/docker/*,*/vendor/* ."
+	},
+	"config": {
+		"allow-plugins": {
+			"dealerdirect/phpcodesniffer-composer-installer": true
+		}
+	}
+}

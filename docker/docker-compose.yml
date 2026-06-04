@@ -1,0 +1,93 @@
+# Local test harness for the Razuna WordPress plugin.
+#
+# WordPress runs at http://localhost:8080 (a loopback host, which satisfies
+# Razuna's OAuth redirect-URI HTTPS exemption). The container reaches a local
+# Razuna dev server at http://r.lan via the host gateway.
+#
+#   docker compose -f docker/docker-compose.yml up -d
+#   # then open http://localhost:8080  and install WordPress
+#
+# See docker/README.md for the full connect/test walkthrough.
+
+services:
+  db:
+    image: mariadb:11
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: wordpress
+      MARIADB_USER: wordpress
+      MARIADB_PASSWORD: wordpress
+      MARIADB_ROOT_PASSWORD: rootpass
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - hmnet16
+
+  wordpress:
+    image: wordpress:6.7-php8.2-apache
+    restart: unless-stopped
+    depends_on:
+      - db
+    ports:
+      - "8080:80"
+    environment:
+      WORDPRESS_DB_HOST: db
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: wordpress
+      WORDPRESS_DB_NAME: wordpress
+      WORDPRESS_DEBUG: "1"
+      WORDPRESS_CONFIG_EXTRA: |
+        define( 'WP_DEBUG', true );
+        define( 'WP_DEBUG_LOG', true );
+        define( 'WP_DEBUG_DISPLAY', false );
+    # Make the host's local Razuna (r.lan / mcp.r.lan via Caddy/Orbstack)
+    # resolvable from inside the WordPress container.
+    # r.lan / mcp.r.lan / ws.lan are served by the helpmonks Caddy container on
+    # hmnet16 (Caddy routes by Host header). Point them at Caddy's IP so
+    # http://r.lan resolves inside the container exactly as it does from the host
+    # browser — one consistent OAuth host. If Caddy is recreated and its IP
+    # changes, update these:
+    #   docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}' global-caddy-1
+    extra_hosts:
+      - "r.lan:172.18.0.3"
+      - "mcp.r.lan:172.18.0.3"
+      - "ws.lan:172.18.0.3"
+    volumes:
+      - wp_data:/var/www/html
+      # Bind-mount the plugin (repo root) into the plugins directory.
+      - ../:/var/www/html/wp-content/plugins/razuna-wordpress
+      # Dev-only must-use plugin: relax SSL verification for the local Razuna host.
+      - ./mu-plugins:/var/www/html/wp-content/mu-plugins
+    networks:
+      - hmnet16
+
+  # One-off WP-CLI runner (for install/activate/testing). Not a long-running service.
+  #   docker compose -f docker/docker-compose.yml run --rm wpcli plugin list
+  wpcli:
+    image: wordpress:cli-php8.2
+    depends_on:
+      - db
+      - wordpress
+    user: "33:33"
+    environment:
+      WORDPRESS_DB_HOST: db
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: wordpress
+      WORDPRESS_DB_NAME: wordpress
+    extra_hosts:
+      - "r.lan:172.18.0.3"
+      - "mcp.r.lan:172.18.0.3"
+    volumes:
+      - wp_data:/var/www/html
+      - ../:/var/www/html/wp-content/plugins/razuna-wordpress
+      - ./mu-plugins:/var/www/html/wp-content/mu-plugins
+    networks:
+      - hmnet16
+
+volumes:
+  db_data:
+  wp_data:
+
+networks:
+  hmnet16:
+    external: true

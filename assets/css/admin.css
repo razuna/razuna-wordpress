@@ -1,0 +1,222 @@
+/* Razuna DAM — admin + picker styles */
+
+/* Settings page */
+.razuna-settings .razuna-status {
+	font-size: 14px;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+.razuna-settings .razuna-status--connected .dashicons {
+	color: #1a8917;
+}
+
+/* Shared picker */
+.razuna-picker {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	min-height: 320px;
+}
+.razuna-picker__toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+	align-items: flex-end;
+}
+.razuna-picker__field {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+.razuna-picker__label {
+	font-size: 11px;
+	text-transform: uppercase;
+	letter-spacing: .03em;
+	color: #50575e;
+}
+.razuna-picker__toolbar select,
+.razuna-picker__search {
+	min-width: 180px;
+	height: 32px;
+	box-sizing: border-box;
+}
+.razuna-picker__search {
+	min-width: 240px;
+}
+
+/* Insert-options bar — a flex row at the bottom of the picker (outside the grid),
+   sticky so it stays in view once a file is selected */
+.razuna-picker__details {
+	position: sticky;
+	bottom: 0;
+	background: #fff;
+	padding-top: 8px;
+}
+.razuna-picker__details:empty {
+	display: none;
+}
+.razuna-picker__detailbar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 16px;
+	padding: 10px 12px;
+	background: #f6f7f7;
+	border: 1px solid #2271b1;
+	border-radius: 6px;
+}
+.razuna-picker__detailclose {
+	background: none;
+	border: 0;
+	font-size: 22px;
+	line-height: 1;
+	cursor: pointer;
+	color: #646970;
+	padding: 0 4px;
+}
+.razuna-picker__detailclose:hover {
+	color: #1d2327;
+}
+.razuna-picker__field--inline {
+	flex-direction: row;
+	align-items: center;
+	gap: 8px;
+}
+.razuna-picker__toggle {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 13px;
+}
+.razuna-picker__insert {
+	margin-left: auto;
+}
+.razuna-asset__file {
+	display: inline-block;
+	padding: 8px 12px;
+	background: #f0f0f1;
+	border-radius: 4px;
+}
+.razuna-picker__msg {
+	font-size: 13px;
+	color: #50575e;
+	min-height: 18px;
+}
+.razuna-picker__results {
+	display: grid;
+	grid-template-columns: repeat( auto-fill, minmax( 140px, 1fr ) );
+	gap: 12px;
+	overflow-y: auto;
+	max-height: 50vh;
+	padding: 2px;
+}
+.razuna-picker__tile {
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+	gap: 6px;
+	padding: 8px;
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 6px;
+	cursor: pointer;
+	text-align: left;
+}
+.razuna-picker__tile:hover {
+	border-color: #2271b1;
+}
+.razuna-picker__tile.is-selected {
+	border-color: #2271b1;
+	box-shadow: 0 0 0 1px #2271b1;
+}
+.razuna-picker__tile img {
+	width: 100%;
+	height: 110px;
+	object-fit: cover;
+	border-radius: 4px;
+	background: #f0f0f1;
+}
+.razuna-picker__ext {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: 110px;
+	border-radius: 4px;
+	background: #f0f0f1;
+	font-weight: 600;
+	color: #646970;
+}
+.razuna-picker__name {
+	font-size: 12px;
+	line-height: 1.3;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.razuna-picker__empty {
+	padding: 40px 20px;
+	text-align: center;
+}
+
+/* Classic-editor overlay modal */
+.razuna-overlay {
+	position: fixed;
+	inset: 0;
+	background: rgba( 0, 0, 0, .6 );
+	z-index: 160000;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+.razuna-overlay__dialog {
+	background: #fff;
+	width: min( 900px, 92vw );
+	max-height: 88vh;
+	border-radius: 8px;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+}
+.razuna-overlay__header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 14px 18px;
+	border-bottom: 1px solid #dcdcde;
+}
+.razuna-overlay__header h2 {
+	margin: 0;
+	font-size: 16px;
+}
+.razuna-overlay__close {
+	background: none;
+	border: 0;
+	font-size: 24px;
+	line-height: 1;
+	cursor: pointer;
+	color: #646970;
+}
+.razuna-overlay__body {
+	padding: 18px;
+	overflow-y: auto;
+}
+.razuna-overlay__footer {
+	padding: 12px 18px;
+	border-top: 1px solid #dcdcde;
+	text-align: right;
+}
+
+/* Block editor modal sizing */
+.razuna-modal .razuna-modal__body {
+	min-width: min( 820px, 80vw );
+}
+
+/* Front-end block */
+.razuna-asset {
+	margin: 0 0 1em;
+}
+.razuna-asset img {
+	max-width: 100%;
+	height: auto;
+}
