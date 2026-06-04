@@ -297,7 +297,7 @@ final class Api {
 	private function dispatch( string $method, string $path, array $args, bool $force_refresh ) {
 		$token = $this->oauth->get_access_token();
 		if ( '' === $token ) {
-			return new \WP_Error( 'razuna_not_connected', __( 'Razuna is not connected.', 'razuna' ), array( 'status' => 401 ) );
+			return new \WP_Error( 'razuna_not_connected', __( 'Razuna is not connected.', 'razuna-dam' ), array( 'status' => 401 ) );
 		}
 
 		$url = $this->settings->get_server_url() . $path;
@@ -328,7 +328,7 @@ final class Api {
 		$data = json_decode( $body, true );
 
 		if ( 401 === $code && ! $force_refresh ) {
-			return new \WP_Error( 'razuna_unauthorized', __( 'Unauthorized.', 'razuna' ), array( 'status' => 401 ) );
+			return new \WP_Error( 'razuna_unauthorized', __( 'Unauthorized.', 'razuna-dam' ), array( 'status' => 401 ) );
 		}
 		if ( $code < 200 || $code >= 300 ) {
 			$msg = ( is_array( $data ) && ! empty( $data['message'] ) ) ? $data['message'] : ( ( is_array( $data ) && ! empty( $data['error'] ) ) ? $data['error'] : sprintf( 'Razuna API error (%d)', $code ) );

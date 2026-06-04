@@ -1,0 +1,21 @@
+# Files excluded from the deployed WordPress.org plugin (and the generated zip).
+# Keep readme.txt; drop everything that is dev-only.
+
+/.git
+/.github
+/.wordpress-org
+/docker
+/node_modules
+/vendor
+/tests
+
+/.gitignore
+/.gitattributes
+/.distignore
+/.editorconfig
+
+/composer.json
+/composer.lock
+/phpcs.xml
+/phpcs.xml.dist
+/README.md

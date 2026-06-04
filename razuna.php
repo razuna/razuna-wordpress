@@ -10,7 +10,7 @@
  * Author URI:        https://razuna.com
  * License:           GPL-2.0-or-later
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
- * Text Domain:       razuna
+ * Text Domain:       razuna-dam
  *
  * @package Razuna
  */

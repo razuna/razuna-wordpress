@@ -33,8 +33,8 @@ final class Settings {
 
 	public function add_menu(): void {
 		add_options_page(
-			__( 'Razuna DAM', 'razuna' ),
-			__( 'Razuna', 'razuna' ),
+			__( 'Razuna DAM', 'razuna-dam' ),
+			__( 'Razuna', 'razuna-dam' ),
 			'manage_options',
 			'razuna',
 			array( $this, 'render_page' )
@@ -141,7 +141,7 @@ final class Settings {
 
 	public function handle_save(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You are not allowed to do this.', 'razuna' ) );
+			wp_die( esc_html__( 'You are not allowed to do this.', 'razuna-dam' ) );
 		}
 		check_admin_referer( 'razuna_save_settings' );
 

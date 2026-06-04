@@ -1,0 +1,42 @@
+name: Deploy to WordPress.org
+
+# Pushes a tagged release to the WordPress.org plugin SVN repository.
+# Tag the release to match readme.txt "Stable tag", e.g.:
+#   git tag 0.1.0 && git push origin 0.1.0
+#
+# Required repository secrets (Settings → Secrets and variables → Actions):
+#   SVN_USERNAME  – your WordPress.org username
+#   SVN_PASSWORD  – your WordPress.org account password
+# (2FA on the web account does not affect this SVN/basic-auth login.)
+#
+# Listing assets (icon/banner/screenshots) live in .wordpress-org/ and are
+# deployed to the SVN /assets directory. Files matched by .distignore are
+# excluded from the shipped plugin.
+
+on:
+  push:
+    tags:
+      - "*"
+
+jobs:
+  deploy:
+    name: Deploy tag to WordPress.org
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: WordPress.org plugin deploy
+        uses: 10up/action-wordpress-plugin-deploy@stable
+        with:
+          slug: razuna-dam
+          generate-zip: true
+        env:
+          SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
+
+      - name: Upload release zip artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: razuna-dam
+          path: ${{ github.workspace }}/razuna-dam.zip

@@ -128,12 +128,12 @@ final class Plugin {
 			'connected' => $this->settings->is_connected(),
 			'settingsUrl' => esc_url_raw( admin_url( 'options-general.php?page=razuna' ) ),
 			'i18n'      => array(
-				'tabLabel'      => __( 'Razuna', 'razuna' ),
-				'searchPlaceholder' => __( 'Search your Razuna assets…', 'razuna' ),
-				'insert'        => __( 'Insert into post', 'razuna' ),
-				'notConnected'  => __( 'Connect your Razuna account in Settings → Razuna to browse your assets.', 'razuna' ),
-				'loading'       => __( 'Loading…', 'razuna' ),
-				'noResults'     => __( 'No assets found.', 'razuna' ),
+				'tabLabel'      => __( 'Razuna', 'razuna-dam' ),
+				'searchPlaceholder' => __( 'Search your Razuna assets…', 'razuna-dam' ),
+				'insert'        => __( 'Insert into post', 'razuna-dam' ),
+				'notConnected'  => __( 'Connect your Razuna account in Settings → Razuna to browse your assets.', 'razuna-dam' ),
+				'loading'       => __( 'Loading…', 'razuna-dam' ),
+				'noResults'     => __( 'No assets found.', 'razuna-dam' ),
 			),
 		);
 	}
@@ -142,7 +142,7 @@ final class Plugin {
 		$settings_link = sprintf(
 			'<a href="%s">%s</a>',
 			esc_url( admin_url( 'options-general.php?page=razuna' ) ),
-			esc_html__( 'Settings', 'razuna' )
+			esc_html__( 'Settings', 'razuna-dam' )
 		);
 		array_unshift( $links, $settings_link );
 		return $links;

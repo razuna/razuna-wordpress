@@ -46,18 +46,18 @@ final class OAuth {
 
 	public function handle_connect(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You are not allowed to do this.', 'razuna' ) );
+			wp_die( esc_html__( 'You are not allowed to do this.', 'razuna-dam' ) );
 		}
 		check_admin_referer( 'razuna_oauth_connect' );
 
 		$server = $this->settings->get_server_url();
 		if ( '' === $server ) {
-			$this->redirect_with_error( __( 'Please set a valid Razuna server URL first.', 'razuna' ) );
+			$this->redirect_with_error( __( 'Please set a valid Razuna server URL first.', 'razuna-dam' ) );
 		}
 
 		$client_id = $this->ensure_client();
 		if ( '' === $client_id ) {
-			$this->redirect_with_error( '' !== $this->last_error ? $this->last_error : __( 'Could not register this site with Razuna. Check the server URL and try again.', 'razuna' ) );
+			$this->redirect_with_error( '' !== $this->last_error ? $this->last_error : __( 'Could not register this site with Razuna. Check the server URL and try again.', 'razuna-dam' ) );
 		}
 
 		// PKCE + CSRF state.
@@ -121,7 +121,7 @@ final class OAuth {
 		$tx    = get_transient( self::TX_TRANSIENT );
 
 		if ( '' === $code || empty( $tx['state'] ) || ! hash_equals( (string) $tx['state'], $state ) ) {
-			$this->redirect_with_error( __( 'OAuth session expired or invalid. Please try connecting again.', 'razuna' ) );
+			$this->redirect_with_error( __( 'OAuth session expired or invalid. Please try connecting again.', 'razuna-dam' ) );
 		}
 		delete_transient( self::TX_TRANSIENT );
 
@@ -136,7 +136,7 @@ final class OAuth {
 		);
 
 		if ( is_wp_error( $token ) || empty( $token['access_token'] ) ) {
-			$err = is_wp_error( $token ) ? $token->get_error_message() : __( 'Token exchange failed.', 'razuna' );
+			$err = is_wp_error( $token ) ? $token->get_error_message() : __( 'Token exchange failed.', 'razuna-dam' );
 			$this->redirect_with_error( $err );
 		}
 
@@ -149,7 +149,7 @@ final class OAuth {
 
 	public function handle_disconnect(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You are not allowed to do this.', 'razuna' ) );
+			wp_die( esc_html__( 'You are not allowed to do this.', 'razuna-dam' ) );
 		}
 		check_admin_referer( 'razuna_oauth_disconnect' );
 
@@ -309,7 +309,7 @@ final class OAuth {
 		if ( is_wp_error( $resp ) ) {
 			$this->last_error = sprintf(
 				/* translators: 1: server URL, 2: error message */
-				__( 'Could not reach Razuna at %1$s (%2$s).', 'razuna' ),
+				__( 'Could not reach Razuna at %1$s (%2$s).', 'razuna-dam' ),
 				$server,
 				$resp->get_error_message()
 			);
@@ -321,7 +321,7 @@ final class OAuth {
 			$detail = ( is_array( $data ) && ! empty( $data['error_description'] ) ) ? $data['error_description'] : sprintf( 'HTTP %d', $code );
 			$this->last_error = sprintf(
 				/* translators: %s: error detail from Razuna */
-				__( 'Razuna rejected the app registration: %s', 'razuna' ),
+				__( 'Razuna rejected the app registration: %s', 'razuna-dam' ),
 				$detail
 			);
 			return '';
@@ -430,7 +430,7 @@ final class OAuth {
 			$msg = ( is_array( $data ) && ! empty( $data['error_description'] ) ) ? $data['error_description'] : sprintf( 'Token endpoint returned %d', $code );
 			return new \WP_Error( 'razuna_token', $msg );
 		}
-		return is_array( $data ) ? $data : new \WP_Error( 'razuna_token', __( 'Invalid token response.', 'razuna' ) );
+		return is_array( $data ) ? $data : new \WP_Error( 'razuna_token', __( 'Invalid token response.', 'razuna-dam' ) );
 	}
 
 	private function base64url( string $bytes ): string {
