@@ -69,10 +69,74 @@
 			} );
 	}
 
+	function formatFileSize( bytes ) {
+		var size = parseInt( bytes, 10 ) || 0;
+		var mb;
+
+		if ( size <= 0 ) {
+			return 'size unknown';
+		}
+		mb = size / ( 1024 * 1024 );
+		if ( mb < 10 ) {
+			return mb.toFixed( 1 ) + ' MB';
+		}
+		return Math.round( mb ) + ' MB';
+	}
+
+	function formatDimensions( width, height ) {
+		var w = parseInt( width, 10 ) || 0;
+		var h = parseInt( height, 10 ) || 0;
+
+		if ( w > 0 && h > 0 ) {
+			return w + '×' + h + 'px';
+		}
+		return '';
+	}
+
+	function formatOriginalLabel( file ) {
+		var details = [];
+		var dimensions = formatDimensions( file.width, file.height );
+
+		if ( dimensions ) {
+			details.push( dimensions );
+		}
+		details.push( formatFileSize( file.size ) );
+
+		return 'Original file (' + details.join( ', ' ) + ')';
+	}
+
+	function formatSavedFormatLabel( fmt ) {
+		var name = fmt.name || '';
+		var dimensions = formatDimensions( fmt.width, fmt.height );
+		var format = fmt.format ? String( fmt.format ).toUpperCase() : '';
+		var details = [ dimensions, format ].filter( function ( value ) { return !! value; } ).join( ' ' );
+
+		if ( name && details && name.toLowerCase() !== details.toLowerCase() ) {
+			return name + ' (' + details + ')';
+		}
+		return name || details || 'Additional format';
+	}
+
 	function Picker( container, options ) {
 		this.container = container;
 		this.onSelect = options.onSelect || function () {};
-		this.state = { workspaceId: '', folderId: '', term: '', items: [], selected: null, formats: [] };
+		this.pageSize = 25;
+		this.requestSeq = 0;
+		this.observer = null;
+		this.state = {
+			workspaceId: '',
+			folderId: '',
+			term: '',
+			mode: 'browse',
+			items: [],
+			selected: null,
+			formats: [],
+			page: 0,
+			perPage: this.pageSize,
+			total: 0,
+			hasMore: false,
+			loading: false,
+		};
 		this.nodes = {};
 		this.render();
 		this.loadWorkspaces();
@@ -99,12 +163,14 @@
 		this.nodes.workspace = el( 'select', { class: 'razuna-picker__workspace', onChange: function ( e ) {
 			self.state.workspaceId = e.target.value;
 			self.state.folderId = '';
+			self.state.term = '';
+			self.nodes.search.value = '';
 			self.loadFolders();
 		} } );
 
 		this.nodes.folder = el( 'select', { class: 'razuna-picker__folder', onChange: function ( e ) {
 			self.state.folderId = e.target.value;
-			self.loadFiles();
+			self.loadCurrent();
 		} } );
 
 		this.nodes.search = el( 'input', {
@@ -202,32 +268,112 @@
 	};
 
 	Picker.prototype.loadFiles = function () {
-		var self = this;
-		this.clearSelection();
-		this.setStatus( i18n.loading || 'Loading…' );
-		api( '/files', { workspace_id: this.state.workspaceId, folder_id: this.state.folderId } )
-			.then( function ( body ) { self.renderResults( body.items || [] ); } )
-			.catch( function ( e ) { self.setStatus( e.message ); } );
+		this.state.mode = 'browse';
+		this.loadPage( true );
 	};
 
 	Picker.prototype.runSearch = function () {
-		var self = this;
-		this.clearSelection();
-		this.setStatus( i18n.loading || 'Loading…' );
-		api( '/search', { workspace_id: this.state.workspaceId, term: this.state.term, folder_id: this.state.folderId } )
-			.then( function ( body ) { self.renderResults( body.items || [] ); } )
-			.catch( function ( e ) { self.setStatus( e.message ); } );
+		this.state.mode = 'search';
+		this.loadPage( true );
 	};
 
-	Picker.prototype.renderResults = function ( items ) {
+	Picker.prototype.loadCurrent = function () {
+		if ( this.state.term ) {
+			this.runSearch();
+		} else {
+			this.loadFiles();
+		}
+	};
+
+	Picker.prototype.loadNextPage = function () {
+		if ( this.state.loading || ! this.state.hasMore ) {
+			return;
+		}
+		this.loadPage( false );
+	};
+
+	Picker.prototype.loadPage = function ( reset ) {
 		var self = this;
-		this.state.items = items;
-		this.nodes.results.innerHTML = '';
-		if ( ! items.length ) {
+		var nextPage = reset ? 1 : this.state.page + 1;
+		var params = {
+			workspace_id: this.state.workspaceId,
+			folder_id: this.state.folderId,
+			page: nextPage,
+			per_page: this.pageSize,
+		};
+		var path = '/files';
+		var requestId = ++this.requestSeq;
+
+		if ( 'search' === this.state.mode ) {
+			path = '/search';
+			params.term = this.state.term;
+		}
+
+		if ( reset ) {
+			this.clearSelection();
+			this.state.items = [];
+			this.state.page = 0;
+			this.state.total = 0;
+			this.state.hasMore = false;
+			this.nodes.results.innerHTML = '';
+			this.setStatus( i18n.loading || 'Loading…' );
+		}
+
+		this.state.loading = true;
+		this.renderPager();
+		api( path, params )
+			.then( function ( body ) {
+				var items;
+
+				if ( requestId !== self.requestSeq ) {
+					return;
+				}
+
+				items = body.items || [];
+				self.state.page = parseInt( body.page, 10 ) || nextPage;
+				self.state.perPage = parseInt( body.per_page, 10 ) || self.pageSize;
+				self.state.total = parseInt( body.total, 10 ) || ( reset ? items.length : self.state.items.length + items.length );
+				self.state.hasMore = ( undefined !== body.has_more )
+					? !! body.has_more
+					: ( self.state.total > self.state.page * self.state.perPage || items.length === self.state.perPage );
+				self.state.loading = false;
+				self.renderResults( items, ! reset );
+				self.updateResultStatus();
+				self.renderPager();
+			} )
+			.catch( function ( e ) {
+				if ( requestId !== self.requestSeq ) {
+					return;
+				}
+				self.state.loading = false;
+				self.renderPager();
+				self.setStatus( e.message );
+			} );
+	};
+
+	Picker.prototype.updateResultStatus = function () {
+		if ( ! this.state.items.length ) {
 			this.setStatus( i18n.noResults || 'No assets found.' );
 			return;
 		}
+		if ( this.state.total > this.state.items.length ) {
+			this.setStatus( 'Showing ' + this.state.items.length + ' of ' + this.state.total + ' assets.' );
+			return;
+		}
 		this.setStatus( '' );
+	};
+
+	Picker.prototype.renderResults = function ( items, append ) {
+		var self = this;
+		if ( append ) {
+			this.state.items = this.state.items.concat( items );
+		} else {
+			this.state.items = items;
+			this.nodes.results.innerHTML = '';
+		}
+		if ( ! this.state.items.length ) {
+			return;
+		}
 		items.forEach( function ( file ) {
 			var thumb = file.thumb_url || file.preview_url || file.full_url || '';
 			var tile = el( 'button', {
@@ -243,6 +389,60 @@
 			] );
 			self.nodes.results.appendChild( tile );
 		} );
+	};
+
+	Picker.prototype.renderPager = function () {
+		var self = this;
+		var button;
+
+		if ( ! this.nodes.results ) {
+			return;
+		}
+		if ( this.nodes.pager && this.nodes.pager.parentNode ) {
+			this.nodes.pager.parentNode.removeChild( this.nodes.pager );
+		}
+		this.nodes.pager = el( 'div', { class: 'razuna-picker__pager' } );
+
+		if ( this.state.loading && this.state.items.length ) {
+			this.nodes.pager.appendChild( el( 'span', { class: 'razuna-picker__loading', text: i18n.loading || 'Loading…' } ) );
+		} else if ( this.state.hasMore ) {
+			button = el( 'button', {
+				type: 'button',
+				class: 'button razuna-picker__load-more',
+				text: 'Load more',
+				onClick: function () { self.loadNextPage(); },
+			} );
+			this.nodes.pager.appendChild( button );
+		} else if ( this.state.items.length ) {
+			this.nodes.pager.appendChild( el( 'span', { class: 'razuna-picker__end', text: 'End of results' } ) );
+		}
+
+		if ( this.nodes.pager.childNodes.length ) {
+			this.nodes.results.appendChild( this.nodes.pager );
+			this.observePager();
+		}
+	};
+
+	Picker.prototype.observePager = function () {
+		var self = this;
+
+		if ( this.observer ) {
+			this.observer.disconnect();
+			this.observer = null;
+		}
+		if ( ! window.IntersectionObserver || ! this.nodes.pager || ! this.nodes.results || ! this.state.hasMore ) {
+			return;
+		}
+
+		this.observer = new window.IntersectionObserver(
+			function ( entries ) {
+				if ( entries[ 0 ] && entries[ 0 ].isIntersecting ) {
+					self.loadNextPage();
+				}
+			},
+			{ root: this.nodes.results, rootMargin: '120px' }
+		);
+		this.observer.observe( this.nodes.pager );
 	};
 
 	Picker.prototype.clearSelection = function () {
@@ -262,6 +462,8 @@
 	};
 
 	Picker.prototype.selectFile = function ( file, tileEl ) {
+		var selectedId = file.id;
+		var self = this;
 		this.clearSelection();
 		this.state.selected = file;
 		this.selectedTile = tileEl;
@@ -272,10 +474,9 @@
 
 		// Fetch saved formats for images (best-effort; failure is non-fatal).
 		if ( file.is_image && file.id ) {
-			var self = this;
 			api( '/formats', { file_id: file.id } )
 				.then( function ( body ) {
-					if ( self.state.selected === file ) {
+					if ( self.state.selected && self.state.selected.id === selectedId ) {
 						self.state.formats = body.items || [];
 						self.renderBar();
 					}
@@ -301,19 +502,18 @@
 		// Build the "Insert as" options.
 		var variantSelect = el( 'select', { class: 'razuna-picker__variant' } );
 		if ( file.is_image ) {
-			variantSelect.appendChild( el( 'option', { value: 'full', text: 'Full size' } ) );
 			if ( file.preview_url ) {
-				variantSelect.appendChild( el( 'option', { value: 'large', text: 'Large preview' } ) );
+				variantSelect.appendChild( el( 'option', { value: 'large', text: 'Large thumbnail (1200px)' } ) );
 			}
 			if ( file.thumb_url ) {
-				variantSelect.appendChild( el( 'option', { value: 'thumb', text: 'Thumbnail' } ) );
+				variantSelect.appendChild( el( 'option', { value: 'thumb', text: 'Small thumbnail (400px)' } ) );
 			}
 			this.state.formats.forEach( function ( fmt ) {
-				var label = fmt.name || ( fmt.width + '×' + fmt.height + ' ' + ( fmt.format || '' ).toUpperCase() );
-				variantSelect.appendChild( el( 'option', { value: 'format:' + fmt.id, text: label } ) );
+				variantSelect.appendChild( el( 'option', { value: 'format:' + fmt.id, text: formatSavedFormatLabel( fmt ) } ) );
 			} );
+			variantSelect.appendChild( el( 'option', { value: 'full', text: formatOriginalLabel( file ) } ) );
 		} else {
-			variantSelect.appendChild( el( 'option', { value: 'full', text: 'Original file' } ) );
+			variantSelect.appendChild( el( 'option', { value: 'full', text: formatOriginalLabel( file ) } ) );
 			variantSelect.disabled = true;
 		}
 
@@ -358,12 +558,14 @@
 	 */
 	Picker.prototype.doInsert = function ( variant, asDownload ) {
 		var file = this.state.selected;
+		var filename;
 		if ( ! file ) {
 			return;
 		}
 
+		filename = file.filename || file.name;
 		var url = file.full_url;
-		var label = 'Full size';
+		var label = 'Original file';
 
 		if ( 0 === variant.indexOf( 'format:' ) ) {
 			var fmtId = variant.slice( 7 );
@@ -371,14 +573,14 @@
 			if ( fmt ) {
 				// Saved formats carry durable signed view + download direct links.
 				url = asDownload ? ( fmt.download_url || fmt.view_url ) : ( fmt.view_url || fmt.download_url );
-				label = fmt.name || ( fmt.width + '×' + fmt.height + ' ' + ( fmt.format || '' ).toUpperCase() );
+				label = formatSavedFormatLabel( fmt );
 			}
 		} else if ( 'large' === variant ) {
 			url = file.preview_url || file.full_url;
-			label = 'Large preview';
+			label = 'Large thumbnail (1200px)';
 		} else if ( 'thumb' === variant ) {
 			url = file.thumb_url || file.preview_url || file.full_url;
-			label = 'Thumbnail';
+			label = 'Small thumbnail (400px)';
 		}
 
 		// A download link uses the dedicated download URL when available and is
@@ -390,8 +592,8 @@
 
 		this.onSelect( {
 			id: file.id,
-			name: file.name,
-			alt: file.name,
+			name: filename,
+			alt: filename,
 			url: url,
 			full_url: file.full_url,
 			download_url: file.download_url,

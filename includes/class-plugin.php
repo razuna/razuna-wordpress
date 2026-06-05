@@ -85,8 +85,8 @@ final class Plugin {
 		if ( wp_script_is( 'razuna-picker', 'registered' ) ) {
 			return;
 		}
-		wp_register_style( 'razuna-admin', RAZUNA_PLUGIN_URL . 'assets/css/admin.css', array(), RAZUNA_VERSION );
-		wp_register_script( 'razuna-picker', RAZUNA_PLUGIN_URL . 'assets/js/picker.js', array(), RAZUNA_VERSION, true );
+		wp_register_style( 'razuna-admin', RAZUNA_PLUGIN_URL . 'assets/css/admin.css', array(), self::asset_version( 'assets/css/admin.css' ) );
+		wp_register_script( 'razuna-picker', RAZUNA_PLUGIN_URL . 'assets/js/picker.js', array(), self::asset_version( 'assets/js/picker.js' ), true );
 		wp_localize_script( 'razuna-picker', 'RazunaConfig', self::instance()->frontend_config() );
 	}
 
@@ -112,9 +112,18 @@ final class Plugin {
 			'razuna-media-modal',
 			RAZUNA_PLUGIN_URL . 'assets/js/media-modal.js',
 			array( 'razuna-picker' ),
-			RAZUNA_VERSION,
+			self::asset_version( 'assets/js/media-modal.js' ),
 			true
 		);
+	}
+
+	private static function asset_version( string $relative_path ): string {
+		$path = RAZUNA_PLUGIN_DIR . ltrim( $relative_path, '/' );
+
+		if ( file_exists( $path ) ) {
+			return RAZUNA_VERSION . '-' . filemtime( $path );
+		}
+		return RAZUNA_VERSION;
 	}
 
 	/**

@@ -154,6 +154,22 @@
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
+.razuna-picker__pager {
+	grid-column: 1 / -1;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	min-height: 36px;
+	padding: 4px 0;
+}
+.razuna-picker__loading,
+.razuna-picker__end {
+	font-size: 13px;
+	color: #646970;
+}
+.razuna-picker__load-more {
+	min-width: 120px;
+}
 .razuna-picker__empty {
 	padding: 40px 20px;
 	text-align: center;

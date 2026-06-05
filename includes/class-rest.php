@@ -77,6 +77,8 @@ final class Rest {
 				'args'                => array(
 					'workspace_id' => array( 'required' => true, 'sanitize_callback' => 'sanitize_text_field' ),
 					'folder_id'    => array( 'required' => false, 'default' => '', 'sanitize_callback' => 'sanitize_text_field' ),
+					'page'         => array( 'required' => false, 'default' => 1, 'sanitize_callback' => 'absint' ),
+					'per_page'     => array( 'required' => false, 'default' => 25, 'sanitize_callback' => 'absint' ),
 				),
 			)
 		);
@@ -105,6 +107,8 @@ final class Rest {
 					'workspace_id' => array( 'required' => true, 'sanitize_callback' => 'sanitize_text_field' ),
 					'term'         => array( 'required' => true, 'sanitize_callback' => 'sanitize_text_field' ),
 					'folder_id'    => array( 'required' => false, 'sanitize_callback' => 'sanitize_text_field' ),
+					'page'         => array( 'required' => false, 'default' => 1, 'sanitize_callback' => 'absint' ),
+					'per_page'     => array( 'required' => false, 'default' => 25, 'sanitize_callback' => 'absint' ),
 				),
 			)
 		);
@@ -139,7 +143,9 @@ final class Rest {
 		return $this->respond(
 			$this->api->get_folder_content(
 				(string) $req->get_param( 'workspace_id' ),
-				(string) $req->get_param( 'folder_id' )
+				(string) $req->get_param( 'folder_id' ),
+				(int) $req->get_param( 'page' ),
+				(int) $req->get_param( 'per_page' )
 			)
 		);
 	}
@@ -153,7 +159,9 @@ final class Rest {
 			$this->api->search(
 				(string) $req->get_param( 'workspace_id' ),
 				(string) $req->get_param( 'term' ),
-				(string) $req->get_param( 'folder_id' )
+				(string) $req->get_param( 'folder_id' ),
+				(int) $req->get_param( 'page' ),
+				(int) $req->get_param( 'per_page' )
 			)
 		);
 	}
@@ -175,6 +183,9 @@ final class Rest {
 				),
 				$status ? $status : 500
 			);
+		}
+		if ( is_array( $result ) && array_key_exists( 'items', $result ) ) {
+			return rest_ensure_response( $result );
 		}
 		return rest_ensure_response( array( 'items' => $result ) );
 	}

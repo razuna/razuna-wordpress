@@ -4,7 +4,7 @@ Tags: dam, digital asset management, media, images, razuna
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 1.0.0
+Stable tag: 1.1.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -104,11 +104,18 @@ the browser. Embedded images use separate signed public links.
 
 == Changelog ==
 
+= 1.1.0 =
+* Workspace dropdown now keeps "My workspace" first and sorts the remaining workspaces alphabetically.
+* Asset picker now supports paged browsing and search results with infinite scroll / Load more fallback.
+
 = 1.0.0 =
 * Initial release: OAuth connection, asset browser/search, size & saved-format
   selection, download links, "Razuna Asset" block and classic-editor inserter.
 
 == Upgrade Notice ==
+
+= 1.1.0 =
+Adds workspace sorting and paged picker results for larger Razuna libraries.
 
 = 1.0.0 =
 Initial release.

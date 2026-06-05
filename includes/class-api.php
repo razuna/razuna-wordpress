@@ -45,10 +45,23 @@ final class Api {
 				continue;
 			}
 			$out[] = array(
-				'id'   => isset( $ws['_id'] ) ? $ws['_id'] : ( isset( $ws['id'] ) ? $ws['id'] : '' ),
-				'name' => isset( $ws['name'] ) ? $ws['name'] : '',
+				'id'         => isset( $ws['_id'] ) ? $ws['_id'] : ( isset( $ws['id'] ) ? $ws['id'] : '' ),
+				'name'       => isset( $ws['name'] ) ? $ws['name'] : '',
+				'is_default' => ! empty( $ws['is_default'] ),
 			);
 		}
+		usort(
+			$out,
+			function ( $a, $b ) {
+				$a_default = ! empty( $a['is_default'] ) || 0 === strcasecmp( (string) $a['name'], 'My workspace' );
+				$b_default = ! empty( $b['is_default'] ) || 0 === strcasecmp( (string) $b['name'], 'My workspace' );
+
+				if ( $a_default !== $b_default ) {
+					return $a_default ? -1 : 1;
+				}
+				return strcasecmp( (string) $a['name'], (string) $b['name'] );
+			}
+		);
 		return $out;
 	}
 
@@ -71,9 +84,20 @@ final class Api {
 	 *
 	 * @return array|\WP_Error
 	 */
-	public function get_folder_content( string $workspace_id, string $folder_id = '' ) {
+	public function get_folder_content(
+		string $workspace_id,
+		string $folder_id = '',
+		int $page = 1,
+		int $per_page = 25
+	) {
 		// folder_id is optional: an empty value lists the workspace root.
-		$query = array( 'workspace_id' => $workspace_id );
+		$page     = max( 1, $page );
+		$per_page = max( 1, min( 50, $per_page ) );
+		$query    = array(
+			'workspace_id' => $workspace_id,
+			'page'         => $page,
+			'limit'        => $per_page,
+		);
 		if ( '' !== $folder_id ) {
 			$query['folder_id'] = $folder_id;
 		}
@@ -82,7 +106,7 @@ final class Api {
 			return $data;
 		}
 		$files = $this->extract_files( $data );
-		return array_map( array( $this, 'normalize_file' ), $files );
+		return $this->paged_result( $data, $files, $page, $per_page );
 	}
 
 	/**
@@ -110,8 +134,8 @@ final class Api {
 				'id'           => isset( $f['id'] ) ? $f['id'] : ( isset( $f['_id'] ) ? $f['_id'] : '' ),
 				'name'         => isset( $f['name'] ) ? $f['name'] : '',
 				'format'       => isset( $f['format'] ) ? $f['format'] : '',
-				'width'        => isset( $f['width'] ) ? (int) $f['width'] : 0,
-				'height'       => isset( $f['height'] ) ? (int) $f['height'] : 0,
+				'width'        => $this->image_width( $f ),
+				'height'       => $this->image_height( $f ),
 				'view_url'     => '' !== $view ? $view : $download,
 				'download_url' => '' !== $download ? $download : $view,
 			);
@@ -124,10 +148,21 @@ final class Api {
 	 *
 	 * @return array|\WP_Error
 	 */
-	public function search( string $workspace_id, string $term, string $folder_id = '' ) {
+	public function search(
+		string $workspace_id,
+		string $term,
+		string $folder_id = '',
+		int $page = 1,
+		int $per_page = 25
+	) {
+		$page     = max( 1, $page );
+		$per_page = max( 1, min( 50, $per_page ) );
 		$body = array(
 			'term'         => $term,
 			'workspace_id' => $workspace_id,
+			'page'         => $page,
+			'per_page'     => $per_page,
+			'limit'        => $per_page,
 		);
 		if ( '' !== $folder_id ) {
 			$body['folder_id'] = $folder_id;
@@ -137,7 +172,7 @@ final class Api {
 			return $data;
 		}
 		$files = $this->extract_files( $data );
-		return array_map( array( $this, 'normalize_file' ), $files );
+		return $this->paged_result( $data, $files, $page, $per_page );
 	}
 
 	/**
@@ -173,8 +208,10 @@ final class Api {
 	 * direct links (direct_links || urls) so embedded URLs survive token expiry.
 	 */
 	public function normalize_file( $f ): array {
-		$f     = is_array( $f ) ? $f : array();
-		$links = array();
+		$f         = is_array( $f ) ? $f : array();
+		$file_id   = isset( $f['_id'] ) ? $f['_id'] : ( isset( $f['id'] ) ? $f['id'] : '' );
+		$file_name = $this->string_field( $f, array( 'filename', 'file_name', 'original_filename', 'original_name', 'display_name', 'title', 'name' ) );
+		$links     = array();
 		if ( isset( $f['direct_links'] ) && is_array( $f['direct_links'] ) ) {
 			$links = $f['direct_links'];
 		} elseif ( isset( $f['urls'] ) && is_array( $f['urls'] ) ) {
@@ -189,14 +226,15 @@ final class Api {
 		$thumb = $this->link( $links, array( 'url_t', 'url_tl', 'url' ) );
 
 		return array(
-			'id'           => isset( $f['_id'] ) ? $f['_id'] : ( isset( $f['id'] ) ? $f['id'] : '' ),
-			'name'         => ! empty( $f['name'] ) ? $f['name'] : ( ! empty( $f['original_name'] ) ? $f['original_name'] : ( isset( $f['_id'] ) ? (string) $f['_id'] : '' ) ),
+			'id'           => $file_id,
+			'name'         => '' !== $file_name ? $file_name : (string) $file_id,
+			'filename'     => '' !== $file_name ? $file_name : (string) $file_id,
 			'extension'    => isset( $f['extension'] ) ? $f['extension'] : '',
 			'content_type' => $content_type,
 			'is_image'     => $is_image,
 			'size'         => isset( $f['size'] ) ? (int) $f['size'] : 0,
-			'width'        => isset( $f['width'] ) ? (int) $f['width'] : 0,
-			'height'       => isset( $f['height'] ) ? (int) $f['height'] : 0,
+			'width'        => $this->image_width( $f ),
+			'height'       => $this->image_height( $f ),
 			'description'  => isset( $f['description'] ) ? $f['description'] : '',
 			'thumb_url'    => $thumb,
 			'preview_url'  => $large,
@@ -215,6 +253,77 @@ final class Api {
 			}
 		}
 		return '';
+	}
+
+	private function image_width( array $data ): int {
+		$width = $this->int_field( $data, array( 'width', 'image_width', 'original_width', 'ImageWidth', 'w' ) );
+		if ( $width > 0 ) {
+			return $width;
+		}
+
+		$pixels = $this->pixels_dimensions( $data );
+		if ( $pixels[0] > 0 ) {
+			return $pixels[0];
+		}
+
+		$raw = $this->raw_json_dimensions( $data );
+		return $raw[0];
+	}
+
+	private function image_height( array $data ): int {
+		$height = $this->int_field( $data, array( 'height', 'image_height', 'original_height', 'ImageHeight', 'h' ) );
+		if ( $height > 0 ) {
+			return $height;
+		}
+
+		$pixels = $this->pixels_dimensions( $data );
+		if ( $pixels[1] > 0 ) {
+			return $pixels[1];
+		}
+
+		$raw = $this->raw_json_dimensions( $data );
+		return $raw[1];
+	}
+
+	private function pixels_dimensions( array $data ): array {
+		if ( empty( $data['pixels'] ) || ! is_string( $data['pixels'] ) ) {
+			return array( 0, 0 );
+		}
+		if ( preg_match( '/(\\d+)\\s*[x×]\\s*(\\d+)/i', $data['pixels'], $matches ) ) {
+			return array( (int) $matches[1], (int) $matches[2] );
+		}
+		return array( 0, 0 );
+	}
+
+	private function raw_json_dimensions( array $data ): array {
+		if ( empty( $data['raw_json'] ) || ! is_string( $data['raw_json'] ) ) {
+			return array( 0, 0 );
+		}
+		$raw = json_decode( $data['raw_json'], true );
+		if ( ! is_array( $raw ) ) {
+			return array( 0, 0 );
+		}
+		$width  = $this->int_field( $raw, array( 'ImageWidth', 'image_width', 'width' ) );
+		$height = $this->int_field( $raw, array( 'ImageHeight', 'image_height', 'height' ) );
+		return array( $width, $height );
+	}
+
+	private function string_field( array $data, array $keys ): string {
+		foreach ( $keys as $key ) {
+			if ( isset( $data[ $key ] ) && '' !== trim( (string) $data[ $key ] ) ) {
+				return trim( (string) $data[ $key ] );
+			}
+		}
+		return '';
+	}
+
+	private function int_field( array $data, array $keys ): int {
+		foreach ( $keys as $key ) {
+			if ( isset( $data[ $key ] ) && is_numeric( $data[ $key ] ) ) {
+				return (int) $data[ $key ];
+			}
+		}
+		return 0;
 	}
 
 	private function absolute( string $url ): string {
@@ -238,6 +347,45 @@ final class Api {
 			return $data['results'];
 		}
 		return is_array( $data ) ? $data : array();
+	}
+
+	private function paged_result( array $data, array $files, int $page, int $per_page ): array {
+		$total       = $this->extract_total( $data );
+		$has_total   = null !== $total;
+		$total       = $has_total ? $total : ( ( max( 1, $page ) - 1 ) * max( 1, $per_page ) ) + count( $files );
+		$api_page    = isset( $data['results']['page'] )
+			? (int) $data['results']['page']
+			: ( isset( $data['page'] ) ? (int) $data['page'] : $page );
+		$api_limit   = isset( $data['results']['per_page'] )
+			? (int) $data['results']['per_page']
+			: ( isset( $data['per_page'] ) ? (int) $data['per_page'] : $per_page );
+		$safe_page   = max( 1, $api_page );
+		$safe_limit  = max( 1, $api_limit );
+		$items       = array_map( array( $this, 'normalize_file' ), $files );
+		$has_more    = $has_total
+			? $total > ( $safe_page * $safe_limit )
+			: count( $files ) === $safe_limit;
+
+		return array(
+			'items'    => $items,
+			'total'    => $total,
+			'page'     => $safe_page,
+			'per_page' => $safe_limit,
+			'has_more' => $has_more,
+		);
+	}
+
+	private function extract_total( array $data ): ?int {
+		if ( isset( $data['results']['total'] ) ) {
+			return (int) $data['results']['total'];
+		}
+		if ( isset( $data['total'] ) ) {
+			return (int) $data['total'];
+		}
+		if ( isset( $data['found'] ) ) {
+			return (int) $data['found'];
+		}
+		return null;
 	}
 
 	private function flatten_tree( array $tree, string $path = '', int $depth = 0 ): array {
