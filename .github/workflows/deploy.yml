@@ -1,39 +1,33 @@
-name: Deploy to WordPress.org
+name: Build WordPress Plugin ZIP
 
-# Pushes a tagged release to the WordPress.org plugin SVN repository.
+# Builds a tagged release ZIP for WordPress.org submission/manual install.
 # Tag the release to match readme.txt "Stable tag", e.g.:
 #   git tag 1.0.0 && git push origin 1.0.0
 #
-# Required repository secrets (Settings → Secrets and variables → Actions):
-#   SVN_USERNAME  – your WordPress.org username
-#   SVN_PASSWORD  – your WordPress.org account password
-# (2FA on the web account does not affect this SVN/basic-auth login.)
-#
-# Listing assets (icon/banner/screenshots) live in .wordpress-org/ and are
-# deployed to the SVN /assets directory. Files matched by .distignore are
-# excluded from the shipped plugin.
+# WordPress.org SVN deployment can be restored after the plugin is approved.
+# Files matched by .distignore are excluded from the shipped plugin.
 
 on:
+  workflow_dispatch:
   push:
     tags:
       - "*"
 
 jobs:
-  deploy:
-    name: Deploy tag to WordPress.org
+  build_zip:
+    name: Build release ZIP
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: WordPress.org plugin deploy
-        uses: 10up/action-wordpress-plugin-deploy@stable
-        with:
-          slug: razuna-dam
-          generate-zip: true
-        env:
-          SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
-          SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
+      - name: Package plugin
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/razuna-dam"
+          rsync -a --delete --exclude-from=.distignore ./ "$RUNNER_TEMP/razuna-dam/"
+          cd "$RUNNER_TEMP"
+          zip -r "$GITHUB_WORKSPACE/razuna-dam.zip" razuna-dam
 
       - name: Upload release zip artifact
         uses: actions/upload-artifact@v4
