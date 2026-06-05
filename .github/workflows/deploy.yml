@@ -2,7 +2,7 @@ name: Deploy to WordPress.org
 
 # Pushes a tagged release to the WordPress.org plugin SVN repository.
 # Tag the release to match readme.txt "Stable tag", e.g.:
-#   git tag 0.1.0 && git push origin 0.1.0
+#   git tag 1.0.0 && git push origin 1.0.0
 #
 # Required repository secrets (Settings → Secrets and variables → Actions):
 #   SVN_USERNAME  – your WordPress.org username

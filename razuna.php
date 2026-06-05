@@ -3,7 +3,7 @@
  * Plugin Name:       Razuna DAM
  * Plugin URI:        https://razuna.com/integrations/wordpress
  * Description:        Browse, search, and embed your Razuna digital assets directly from WordPress. Connects to Razuna over OAuth; published images are served from Razuna via durable direct links (no duplication).
- * Version:           0.1.0
+ * Version:           1.0.0
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            Razuna
@@ -19,7 +19,7 @@ namespace Razuna;
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'RAZUNA_VERSION', '0.1.0' );
+define( 'RAZUNA_VERSION', '1.0.0' );
 define( 'RAZUNA_PLUGIN_FILE', __FILE__ );
 define( 'RAZUNA_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'RAZUNA_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
