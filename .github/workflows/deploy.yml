@@ -1,6 +1,7 @@
 name: Build WordPress Plugin ZIP
 
-# Builds a tagged release ZIP for WordPress.org submission/manual install.
+# Builds a tagged release ZIP for WordPress.org submission/manual install,
+# then attaches razuna-dam.zip to a GitHub Release.
 # Tag the release to match readme.txt "Stable tag", e.g.:
 #   git tag 1.0.0 && git push origin 1.0.0
 #
@@ -9,17 +10,37 @@ name: Build WordPress Plugin ZIP
 
 on:
   workflow_dispatch:
+    inputs:
+      tag:
+        description: Git tag to package and release, e.g. 1.0.0
+        required: true
   push:
     tags:
       - "*"
+
+permissions:
+  contents: write
 
 jobs:
   build_zip:
     name: Build release ZIP
     runs-on: ubuntu-latest
     steps:
+      - name: Resolve release tag
+        id: release
+        run: |
+          set -euo pipefail
+          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+            tag="${{ inputs.tag }}"
+          else
+            tag="${GITHUB_REF_NAME}"
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.release.outputs.tag }}
 
       - name: Package plugin
         run: |
@@ -34,3 +55,15 @@ jobs:
         with:
           name: razuna-dam
           path: ${{ github.workspace }}/razuna-dam.zip
+
+      - name: Create or update GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" "$GITHUB_WORKSPACE/razuna-dam.zip" --clobber
+          else
+            gh release create "$RELEASE_TAG" "$GITHUB_WORKSPACE/razuna-dam.zip" --verify-tag --title "Razuna DAM $RELEASE_TAG" --notes "WordPress plugin ZIP for Razuna DAM $RELEASE_TAG."
+          fi
