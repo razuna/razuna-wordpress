@@ -53,15 +53,10 @@ runs straight from a checkout (handy for the bind-mounted Docker harness).
 
 - WordPress 6.0+, PHP 7.4+
 - A Razuna account (US, EU, or a custom/dedicated server)
-- The Razuna server must accept OAuth-issued access tokens on its v1 API
-  (the `api/v1/auth_api.js` change in the `helpmonks` repo).
 
 ## Local development & testing
 
 See [`docker/README.md`](docker/README.md) for a one-command WordPress harness
 and the full connect → browse → insert → public-render walkthrough.
 
-## Status
 
-v0.1.0 — first cut. WordPress is the first of three planned Razuna DAM plugins
-(WordPress, Shopify, Ghost).
