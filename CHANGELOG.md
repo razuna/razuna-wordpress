@@ -6,6 +6,7 @@
 - Added managed WordPress imports for workflows that need attachment IDs.
 - Added Razuna import actions for core media blocks, featured images, the Media Library and media modal flows.
 - Stored source Razuna metadata on imported WordPress attachments.
+- Kept the WordPress.org review fixes for plugin URL, settings-page JavaScript enqueueing and WPCS cleanup.
 - Updated plugin/readme stable version to 1.2.0.
 
 ## 1.1.1 - 2026-06-09
