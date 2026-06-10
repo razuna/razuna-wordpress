@@ -105,11 +105,12 @@ final class Block {
 
 		if ( $is_image ) {
 			$dims = '';
-			if ( ! empty( $attributes['width'] ) ) {
-				$dims .= ' width="' . (int) $attributes['width'] . '"';
+			$image_dimensions = $this->image_dimensions( $attributes, $url );
+			if ( $image_dimensions[0] > 0 ) {
+				$dims .= ' width="' . $image_dimensions[0] . '"';
 			}
-			if ( ! empty( $attributes['height'] ) ) {
-				$dims .= ' height="' . (int) $attributes['height'] . '"';
+			if ( $image_dimensions[1] > 0 ) {
+				$dims .= ' height="' . $image_dimensions[1] . '"';
 			}
 			$inner = sprintf(
 				'<img src="%s" alt="%s"%s loading="lazy" />',
@@ -126,5 +127,56 @@ final class Block {
 		}
 
 		return sprintf( '<figure %s>%s</figure>', $wrapper, $inner );
+	}
+
+	private function image_dimensions( array $attributes, string $url ): array {
+		$width  = ! empty( $attributes['width'] ) ? (int) $attributes['width'] : 0;
+		$height = ! empty( $attributes['height'] ) ? (int) $attributes['height'] : 0;
+		$max    = $this->direct_link_max_dimension( $url );
+
+		if ( $max <= 0 || $width <= 0 || $height <= 0 ) {
+			return array( $width, $height );
+		}
+
+		$longest = max( $width, $height );
+		if ( $longest <= $max ) {
+			return array( $width, $height );
+		}
+
+		$scale = $max / $longest;
+		return array(
+			max( 1, (int) round( $width * $scale ) ),
+			max( 1, (int) round( $height * $scale ) ),
+		);
+	}
+
+	private function direct_link_max_dimension( string $url ): int {
+		$query = wp_parse_url( $url, PHP_URL_QUERY );
+		$type  = '';
+
+		if ( is_string( $query ) && '' !== $query ) {
+			$params = array();
+			wp_parse_str( $query, $params );
+			$type = isset( $params['type'] ) ? strtolower( (string) $params['type'] ) : '';
+		}
+
+		if ( '' === $type ) {
+			return 0;
+		}
+
+		$type_key = str_replace( array( '-', '_', ' ' ), '', $type );
+		if ( in_array( $type_key, array( 'large', 'thumbnaillarge', 'largethumbnail', 'preview', 'tl' ), true ) ) {
+			return 1200;
+		}
+		if ( in_array( $type_key, array( 'thumbnail', 'thumb', 'small', 't' ), true ) ) {
+			return 400;
+		}
+		if ( false !== strpos( $type_key, 'large' ) ) {
+			return 1200;
+		}
+		if ( false !== strpos( $type_key, 'thumbnail' ) || false !== strpos( $type_key, 'thumb' ) ) {
+			return 400;
+		}
+		return 0;
 	}
 }

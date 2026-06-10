@@ -117,6 +117,65 @@
 		return name || details || 'Additional format';
 	}
 
+	function dimensionPair( width, height ) {
+		return {
+			width: parseInt( width, 10 ) || 0,
+			height: parseInt( height, 10 ) || 0,
+		};
+	}
+
+	function scaledDimensions( width, height, maxSize ) {
+		var dims = dimensionPair( width, height );
+		var longest = Math.max( dims.width, dims.height );
+		var scale;
+
+		if ( dims.width <= 0 || dims.height <= 0 || maxSize <= 0 || longest <= maxSize ) {
+			return dims;
+		}
+
+		scale = maxSize / longest;
+		return {
+			width: Math.max( 1, Math.round( dims.width * scale ) ),
+			height: Math.max( 1, Math.round( dims.height * scale ) ),
+		};
+	}
+
+	function completeDimensions( width, height, originalWidth, originalHeight ) {
+		var dims = dimensionPair( width, height );
+		var original = dimensionPair( originalWidth, originalHeight );
+
+		if ( dims.width > 0 && dims.height > 0 ) {
+			return dims;
+		}
+
+		if ( original.width <= 0 || original.height <= 0 ) {
+			return dims;
+		}
+
+		if ( dims.width > 0 ) {
+			dims.height = Math.max( 1, Math.round( dims.width * original.height / original.width ) );
+		} else if ( dims.height > 0 ) {
+			dims.width = Math.max( 1, Math.round( dims.height * original.width / original.height ) );
+		}
+		return dims;
+	}
+
+	function selectedDimensions( file, variant, format ) {
+		if ( format ) {
+			return completeDimensions( format.width, format.height, file.width, file.height );
+		}
+
+		if ( 'large' === variant ) {
+			return scaledDimensions( file.width, file.height, 1200 );
+		}
+
+		if ( 'thumb' === variant ) {
+			return scaledDimensions( file.width, file.height, 400 );
+		}
+
+		return dimensionPair( file.width, file.height );
+	}
+
 	function Picker( container, options ) {
 		this.container = container;
 		this.onSelect = options.onSelect || function () {};
@@ -566,10 +625,12 @@
 		filename = file.filename || file.name;
 		var url = file.full_url;
 		var label = 'Original file';
+		var fmt = null;
+		var dims;
 
 		if ( 0 === variant.indexOf( 'format:' ) ) {
 			var fmtId = variant.slice( 7 );
-			var fmt = this.state.formats.filter( function ( f ) { return String( f.id ) === fmtId; } )[ 0 ];
+			fmt = this.state.formats.filter( function ( f ) { return String( f.id ) === fmtId; } )[ 0 ];
 			if ( fmt ) {
 				// Saved formats carry durable signed view + download direct links.
 				url = asDownload ? ( fmt.download_url || fmt.view_url ) : ( fmt.view_url || fmt.download_url );
@@ -589,6 +650,7 @@
 		if ( asDownload && 0 !== variant.indexOf( 'format:' ) ) {
 			url = file.download_url || url;
 		}
+		dims = isImage ? selectedDimensions( file, variant, fmt ) : { width: 0, height: 0 };
 
 		this.onSelect( {
 			id: file.id,
@@ -598,8 +660,8 @@
 			full_url: file.full_url,
 			download_url: file.download_url,
 			is_image: isImage,
-			width: file.width || 0,
-			height: file.height || 0,
+			width: dims.width,
+			height: dims.height,
 			label: label,
 		} );
 	};
