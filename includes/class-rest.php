@@ -13,25 +13,50 @@ namespace Razuna;
 
 defined( 'ABSPATH' ) || exit;
 
+/**
+ * Registers the same-origin REST proxy routes.
+ */
 final class Rest {
 
 	const NAMESPACE = 'razuna/v1';
 
-	/** @var Settings */
+	/**
+	 * Settings service.
+	 *
+	 * @var Settings
+	 */
 	private $settings;
 
-	/** @var OAuth */
+	/**
+	 * OAuth service.
+	 *
+	 * @var OAuth
+	 */
 	private $oauth;
 
-	/** @var Api */
+	/**
+	 * Razuna API client.
+	 *
+	 * @var Api
+	 */
 	private $api;
 
+	/**
+	 * Build the REST proxy service.
+	 *
+	 * @param Settings $settings Settings service.
+	 * @param OAuth    $oauth OAuth service.
+	 * @param Api      $api Razuna API client.
+	 */
 	public function __construct( Settings $settings, OAuth $oauth, Api $api ) {
 		$this->settings = $settings;
 		$this->oauth    = $oauth;
 		$this->api      = $api;
 	}
 
+	/**
+	 * Register REST routes.
+	 */
 	public function register_routes(): void {
 		$args_ws = array(
 			'methods'             => 'GET',
@@ -62,7 +87,10 @@ final class Rest {
 				'permission_callback' => array( $this, 'can_use' ),
 				'callback'            => array( $this, 'folders' ),
 				'args'                => array(
-					'workspace_id' => array( 'required' => true, 'sanitize_callback' => 'sanitize_text_field' ),
+					'workspace_id' => array(
+						'required'          => true,
+						'sanitize_callback' => 'sanitize_text_field',
+					),
 				),
 			)
 		);
@@ -75,10 +103,25 @@ final class Rest {
 				'permission_callback' => array( $this, 'can_use' ),
 				'callback'            => array( $this, 'files' ),
 				'args'                => array(
-					'workspace_id' => array( 'required' => true, 'sanitize_callback' => 'sanitize_text_field' ),
-					'folder_id'    => array( 'required' => false, 'default' => '', 'sanitize_callback' => 'sanitize_text_field' ),
-					'page'         => array( 'required' => false, 'default' => 1, 'sanitize_callback' => 'absint' ),
-					'per_page'     => array( 'required' => false, 'default' => 25, 'sanitize_callback' => 'absint' ),
+					'workspace_id' => array(
+						'required'          => true,
+						'sanitize_callback' => 'sanitize_text_field',
+					),
+					'folder_id'    => array(
+						'required'          => false,
+						'default'           => '',
+						'sanitize_callback' => 'sanitize_text_field',
+					),
+					'page'         => array(
+						'required'          => false,
+						'default'           => 1,
+						'sanitize_callback' => 'absint',
+					),
+					'per_page'     => array(
+						'required'          => false,
+						'default'           => 25,
+						'sanitize_callback' => 'absint',
+					),
 				),
 			)
 		);
@@ -91,7 +134,10 @@ final class Rest {
 				'permission_callback' => array( $this, 'can_use' ),
 				'callback'            => array( $this, 'formats' ),
 				'args'                => array(
-					'file_id' => array( 'required' => true, 'sanitize_callback' => 'sanitize_text_field' ),
+					'file_id' => array(
+						'required'          => true,
+						'sanitize_callback' => 'sanitize_text_field',
+					),
 				),
 			)
 		);
@@ -104,11 +150,28 @@ final class Rest {
 				'permission_callback' => array( $this, 'can_use' ),
 				'callback'            => array( $this, 'search' ),
 				'args'                => array(
-					'workspace_id' => array( 'required' => true, 'sanitize_callback' => 'sanitize_text_field' ),
-					'term'         => array( 'required' => true, 'sanitize_callback' => 'sanitize_text_field' ),
-					'folder_id'    => array( 'required' => false, 'sanitize_callback' => 'sanitize_text_field' ),
-					'page'         => array( 'required' => false, 'default' => 1, 'sanitize_callback' => 'absint' ),
-					'per_page'     => array( 'required' => false, 'default' => 25, 'sanitize_callback' => 'absint' ),
+					'workspace_id' => array(
+						'required'          => true,
+						'sanitize_callback' => 'sanitize_text_field',
+					),
+					'term'         => array(
+						'required'          => true,
+						'sanitize_callback' => 'sanitize_text_field',
+					),
+					'folder_id'    => array(
+						'required'          => false,
+						'sanitize_callback' => 'sanitize_text_field',
+					),
+					'page'         => array(
+						'required'          => false,
+						'default'           => 1,
+						'sanitize_callback' => 'absint',
+					),
+					'per_page'     => array(
+						'required'          => false,
+						'default'           => 25,
+						'sanitize_callback' => 'absint',
+					),
 				),
 			)
 		);
@@ -122,6 +185,9 @@ final class Rest {
 		return current_user_can( 'upload_files' );
 	}
 
+	/**
+	 * Return connection status.
+	 */
 	public function status(): \WP_REST_Response {
 		return rest_ensure_response(
 			array(
@@ -131,14 +197,27 @@ final class Rest {
 		);
 	}
 
+	/**
+	 * Return Razuna workspaces.
+	 */
 	public function workspaces() {
 		return $this->respond( $this->api->get_workspaces() );
 	}
 
+	/**
+	 * Return folders for a workspace.
+	 *
+	 * @param \WP_REST_Request $req REST request.
+	 */
 	public function folders( \WP_REST_Request $req ) {
 		return $this->respond( $this->api->get_folders( (string) $req->get_param( 'workspace_id' ) ) );
 	}
 
+	/**
+	 * Return files for a folder.
+	 *
+	 * @param \WP_REST_Request $req REST request.
+	 */
 	public function files( \WP_REST_Request $req ) {
 		return $this->respond(
 			$this->api->get_folder_content(
@@ -150,10 +229,20 @@ final class Rest {
 		);
 	}
 
+	/**
+	 * Return saved formats for a file.
+	 *
+	 * @param \WP_REST_Request $req REST request.
+	 */
 	public function formats( \WP_REST_Request $req ) {
 		return $this->respond( $this->api->get_file_formats( (string) $req->get_param( 'file_id' ) ) );
 	}
 
+	/**
+	 * Search Razuna files.
+	 *
+	 * @param \WP_REST_Request $req REST request.
+	 */
 	public function search( \WP_REST_Request $req ) {
 		return $this->respond(
 			$this->api->search(
@@ -169,6 +258,8 @@ final class Rest {
 	/**
 	 * Convert an Api result (array|WP_Error) into a REST response, mapping the
 	 * "not connected" case to a 409 so the UI can prompt to connect.
+	 *
+	 * @param mixed $result API result.
 	 */
 	private function respond( $result ) {
 		if ( is_wp_error( $result ) ) {

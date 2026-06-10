@@ -83,19 +83,3 @@ defined( 'ABSPATH' ) || exit;
 		<p class="description"><?php esc_html_e( 'You will be sent to Razuna to sign in and approve access, then returned here.', 'razuna-dam' ); ?></p>
 	<?php endif; ?>
 </div>
-
-<script>
-( function () {
-	var region = document.getElementById( 'razuna-region' );
-	function toggleCustom() {
-		var show = region && 'custom' === region.value;
-		document.querySelectorAll( '.razuna-custom-row' ).forEach( function ( row ) {
-			row.style.display = show ? '' : 'none';
-		} );
-	}
-	if ( region ) {
-		region.addEventListener( 'change', toggleCustom );
-		toggleCustom();
-	}
-} )();
-</script>

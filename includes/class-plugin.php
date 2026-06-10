@@ -15,22 +15,46 @@ defined( 'ABSPATH' ) || exit;
  */
 final class Plugin {
 
-	/** @var Plugin|null */
+	/**
+	 * Singleton plugin instance.
+	 *
+	 * @var Plugin|null
+	 */
 	private static $instance = null;
 
-	/** @var Settings */
+	/**
+	 * Settings service.
+	 *
+	 * @var Settings
+	 */
 	private $settings;
 
-	/** @var OAuth */
+	/**
+	 * OAuth service.
+	 *
+	 * @var OAuth
+	 */
 	private $oauth;
 
-	/** @var Api */
+	/**
+	 * Razuna API client.
+	 *
+	 * @var Api
+	 */
 	private $api;
 
-	/** @var Rest */
+	/**
+	 * REST proxy service.
+	 *
+	 * @var Rest
+	 */
 	private $rest;
 
-	/** @var Block */
+	/**
+	 * Block integration service.
+	 *
+	 * @var Block
+	 */
 	private $block;
 
 	/**
@@ -43,6 +67,9 @@ final class Plugin {
 		return self::$instance;
 	}
 
+	/**
+	 * Build service objects.
+	 */
 	private function __construct() {
 		$this->settings = new Settings();
 		$this->oauth    = new OAuth( $this->settings );
@@ -53,6 +80,9 @@ final class Plugin {
 		$this->register_hooks();
 	}
 
+	/**
+	 * Register plugin hooks.
+	 */
 	private function register_hooks(): void {
 		// Settings page + connection status UI.
 		$this->settings->register();
@@ -95,6 +125,8 @@ final class Plugin {
 	 * post-editor / upload screens. The picker talks only to the same-origin REST
 	 * proxy, so no token is exposed to the browser. (Block editor assets are
 	 * enqueued by Block::enqueue_editor via enqueue_block_editor_assets.)
+	 *
+	 * @param string $hook Current admin page hook suffix.
 	 */
 	public function enqueue_editor_assets( string $hook ): void {
 		if ( ! current_user_can( 'upload_files' ) ) {
@@ -117,6 +149,11 @@ final class Plugin {
 		);
 	}
 
+	/**
+	 * Version an asset from plugin version and file timestamp.
+	 *
+	 * @param string $relative_path Asset path relative to the plugin root.
+	 */
 	private static function asset_version( string $relative_path ): string {
 		$path = RAZUNA_PLUGIN_DIR . ltrim( $relative_path, '/' );
 
@@ -132,21 +169,26 @@ final class Plugin {
 	 */
 	public function frontend_config(): array {
 		return array(
-			'restBase'  => esc_url_raw( rest_url( 'razuna/v1' ) ),
-			'nonce'     => wp_create_nonce( 'wp_rest' ),
-			'connected' => $this->settings->is_connected(),
+			'restBase'    => esc_url_raw( rest_url( 'razuna/v1' ) ),
+			'nonce'       => wp_create_nonce( 'wp_rest' ),
+			'connected'   => $this->settings->is_connected(),
 			'settingsUrl' => esc_url_raw( admin_url( 'options-general.php?page=razuna' ) ),
-			'i18n'      => array(
-				'tabLabel'      => __( 'Razuna', 'razuna-dam' ),
+			'i18n'        => array(
+				'tabLabel'          => __( 'Razuna', 'razuna-dam' ),
 				'searchPlaceholder' => __( 'Search your Razuna assets…', 'razuna-dam' ),
-				'insert'        => __( 'Insert into post', 'razuna-dam' ),
-				'notConnected'  => __( 'Connect your Razuna account in Settings → Razuna to browse your assets.', 'razuna-dam' ),
-				'loading'       => __( 'Loading…', 'razuna-dam' ),
-				'noResults'     => __( 'No assets found.', 'razuna-dam' ),
+				'insert'            => __( 'Insert into post', 'razuna-dam' ),
+				'notConnected'      => __( 'Connect your Razuna account in Settings → Razuna to browse your assets.', 'razuna-dam' ),
+				'loading'           => __( 'Loading…', 'razuna-dam' ),
+				'noResults'         => __( 'No assets found.', 'razuna-dam' ),
 			),
 		);
 	}
 
+	/**
+	 * Add plugin row action links.
+	 *
+	 * @param array $links Existing action links.
+	 */
 	public function plugin_action_links( array $links ): array {
 		$settings_link = sprintf(
 			'<a href="%s">%s</a>',
@@ -157,14 +199,23 @@ final class Plugin {
 		return $links;
 	}
 
+	/**
+	 * Return the settings service.
+	 */
 	public function settings(): Settings {
 		return $this->settings;
 	}
 
+	/**
+	 * Return the API client.
+	 */
 	public function api(): Api {
 		return $this->api;
 	}
 
+	/**
+	 * Return the OAuth service.
+	 */
 	public function oauth(): OAuth {
 		return $this->oauth;
 	}
@@ -184,6 +235,9 @@ final class Plugin {
 		}
 	}
 
+	/**
+	 * Keep options on deactivation.
+	 */
 	public static function on_deactivate(): void {
 		// Intentionally keep credentials so re-activating does not force a reconnect.
 		// Full cleanup happens on uninstall (uninstall.php).

@@ -13,24 +13,41 @@ namespace Razuna;
 
 defined( 'ABSPATH' ) || exit;
 
+/**
+ * Razuna API client for server-side editor and render requests.
+ */
 final class Api {
 
-	/** @var Settings */
+	/**
+	 * Settings service.
+	 *
+	 * @var Settings
+	 */
 	private $settings;
 
-	/** @var OAuth */
+	/**
+	 * OAuth service.
+	 *
+	 * @var OAuth
+	 */
 	private $oauth;
 
+	/**
+	 * Build the API client.
+	 *
+	 * @param Settings $settings Settings service.
+	 * @param OAuth    $oauth OAuth service.
+	 */
 	public function __construct( Settings $settings, OAuth $oauth ) {
 		$this->settings = $settings;
 		$this->oauth    = $oauth;
 	}
 
-	/* --------------------------------------------------------------------- *
-	 * High-level operations
-	 * --------------------------------------------------------------------- */
+	// High-level operations.
 
 	/**
+	 * Return Razuna workspaces.
+	 *
 	 * @return array|\WP_Error List of { id, name } workspaces.
 	 */
 	public function get_workspaces() {
@@ -68,6 +85,7 @@ final class Api {
 	/**
 	 * Flattened folder list for a workspace: { id, name, path, depth }.
 	 *
+	 * @param string $workspace_id Workspace ID.
 	 * @return array|\WP_Error
 	 */
 	public function get_folders( string $workspace_id ) {
@@ -82,6 +100,10 @@ final class Api {
 	/**
 	 * Files within a folder, normalized for the picker.
 	 *
+	 * @param string $workspace_id Workspace ID.
+	 * @param string $folder_id Folder ID.
+	 * @param int    $page Page number.
+	 * @param int    $per_page Page size.
 	 * @return array|\WP_Error
 	 */
 	public function get_folder_content(
@@ -115,6 +137,7 @@ final class Api {
 	 * usable with a token — not a durable public link. Returned for completeness;
 	 * durable embedding still uses the direct links from normalize_file().
 	 *
+	 * @param string $file_id File ID.
 	 * @return array|\WP_Error
 	 */
 	public function get_file_formats( string $file_id ) {
@@ -129,9 +152,9 @@ final class Api {
 				continue;
 			}
 			$dimensions = $this->format_dimensions( $f );
-			$view     = isset( $f['view_url'] ) ? $this->absolute( (string) $f['view_url'] ) : '';
-			$download = isset( $f['download_url'] ) ? $this->absolute( (string) $f['download_url'] ) : '';
-			$out[]    = array(
+			$view       = isset( $f['view_url'] ) ? $this->absolute( (string) $f['view_url'] ) : '';
+			$download   = isset( $f['download_url'] ) ? $this->absolute( (string) $f['download_url'] ) : '';
+			$out[]      = array(
 				'id'           => isset( $f['id'] ) ? $f['id'] : ( isset( $f['_id'] ) ? $f['_id'] : '' ),
 				'name'         => isset( $f['name'] ) ? $f['name'] : '',
 				'format'       => isset( $f['format'] ) ? $f['format'] : '',
@@ -147,6 +170,11 @@ final class Api {
 	/**
 	 * Semantic search across a workspace (optionally scoped to a folder).
 	 *
+	 * @param string $workspace_id Workspace ID.
+	 * @param string $term Search term.
+	 * @param string $folder_id Folder ID.
+	 * @param int    $page Page number.
+	 * @param int    $per_page Page size.
 	 * @return array|\WP_Error
 	 */
 	public function search(
@@ -158,7 +186,7 @@ final class Api {
 	) {
 		$page     = max( 1, $page );
 		$per_page = max( 1, min( 50, $per_page ) );
-		$body = array(
+		$body     = array(
 			'term'         => $term,
 			'workspace_id' => $workspace_id,
 			'page'         => $page,
@@ -179,6 +207,7 @@ final class Api {
 	/**
 	 * Single file detail, normalized.
 	 *
+	 * @param string $file_id File ID.
 	 * @return array|\WP_Error
 	 */
 	public function get_file( string $file_id ) {
@@ -200,13 +229,13 @@ final class Api {
 		return is_wp_error( $data ) ? $data : true;
 	}
 
-	/* --------------------------------------------------------------------- *
-	 * Normalization
-	 * --------------------------------------------------------------------- */
+	// Normalization.
 
 	/**
 	 * Map a raw Razuna file object to the stable picker shape. Picks durable
 	 * direct links (direct_links || urls) so embedded URLs survive token expiry.
+	 *
+	 * @param mixed $f Raw file object.
 	 */
 	public function normalize_file( $f ): array {
 		$f         = is_array( $f ) ? $f : array();
@@ -246,6 +275,9 @@ final class Api {
 
 	/**
 	 * First non-empty, absolute URL among the given keys.
+	 *
+	 * @param array $links Direct-link map.
+	 * @param array $keys Candidate keys.
 	 */
 	private function link( array $links, array $keys ): string {
 		foreach ( $keys as $key ) {
@@ -256,6 +288,11 @@ final class Api {
 		return '';
 	}
 
+	/**
+	 * Extract image width from known metadata fields.
+	 *
+	 * @param array $data File metadata.
+	 */
 	private function image_width( array $data ): int {
 		$width = $this->int_field( $data, array( 'width', 'image_width', 'original_width', 'ImageWidth', 'w' ) );
 		if ( $width > 0 ) {
@@ -271,6 +308,11 @@ final class Api {
 		return $raw[0];
 	}
 
+	/**
+	 * Extract image height from known metadata fields.
+	 *
+	 * @param array $data File metadata.
+	 */
 	private function image_height( array $data ): int {
 		$height = $this->int_field( $data, array( 'height', 'image_height', 'original_height', 'ImageHeight', 'h' ) );
 		if ( $height > 0 ) {
@@ -286,6 +328,11 @@ final class Api {
 		return $raw[1];
 	}
 
+	/**
+	 * Extract saved-format dimensions.
+	 *
+	 * @param array $data Format metadata.
+	 */
 	private function format_dimensions( array $data ): array {
 		$width  = $this->int_field( $data, array( 'width', 'image_width', 'format_width', 'target_width', 'resize_width', 'w' ) );
 		$height = $this->int_field( $data, array( 'height', 'image_height', 'format_height', 'target_height', 'resize_height', 'h' ) );
@@ -306,6 +353,11 @@ final class Api {
 		return array( $width, $height );
 	}
 
+	/**
+	 * Parse a "123x456" pixels field.
+	 *
+	 * @param array $data File metadata.
+	 */
 	private function pixels_dimensions( array $data ): array {
 		if ( empty( $data['pixels'] ) || ! is_string( $data['pixels'] ) ) {
 			return array( 0, 0 );
@@ -316,6 +368,11 @@ final class Api {
 		return array( 0, 0 );
 	}
 
+	/**
+	 * Extract dimensions from raw JSON metadata.
+	 *
+	 * @param array $data File metadata.
+	 */
 	private function raw_json_dimensions( array $data ): array {
 		if ( empty( $data['raw_json'] ) || ! is_string( $data['raw_json'] ) ) {
 			return array( 0, 0 );
@@ -329,6 +386,12 @@ final class Api {
 		return array( $width, $height );
 	}
 
+	/**
+	 * Return the first non-empty string field.
+	 *
+	 * @param array $data Source data.
+	 * @param array $keys Candidate keys.
+	 */
 	private function string_field( array $data, array $keys ): string {
 		foreach ( $keys as $key ) {
 			if ( isset( $data[ $key ] ) && '' !== trim( (string) $data[ $key ] ) ) {
@@ -338,6 +401,12 @@ final class Api {
 		return '';
 	}
 
+	/**
+	 * Return the first numeric integer field.
+	 *
+	 * @param array $data Source data.
+	 * @param array $keys Candidate keys.
+	 */
 	private function int_field( array $data, array $keys ): int {
 		foreach ( $keys as $key ) {
 			if ( isset( $data[ $key ] ) && is_numeric( $data[ $key ] ) ) {
@@ -347,6 +416,11 @@ final class Api {
 		return 0;
 	}
 
+	/**
+	 * Convert a possibly relative Razuna URL to absolute.
+	 *
+	 * @param string $url URL.
+	 */
 	private function absolute( string $url ): string {
 		if ( '' === $url ) {
 			return '';
@@ -357,6 +431,11 @@ final class Api {
 		return $this->settings->get_public_url() . '/' . ltrim( $url, '/' );
 	}
 
+	/**
+	 * Extract raw file items from variant response shapes.
+	 *
+	 * @param array $data API response.
+	 */
 	private function extract_files( array $data ): array {
 		if ( isset( $data['results']['files'] ) && is_array( $data['results']['files'] ) ) {
 			return $data['results']['files'];
@@ -370,20 +449,28 @@ final class Api {
 		return is_array( $data ) ? $data : array();
 	}
 
+	/**
+	 * Build the normalized paged response.
+	 *
+	 * @param array $data API response.
+	 * @param array $files Raw files.
+	 * @param int   $page Page number.
+	 * @param int   $per_page Page size.
+	 */
 	private function paged_result( array $data, array $files, int $page, int $per_page ): array {
-		$total       = $this->extract_total( $data );
-		$has_total   = null !== $total;
-		$total       = $has_total ? $total : ( ( max( 1, $page ) - 1 ) * max( 1, $per_page ) ) + count( $files );
-		$api_page    = isset( $data['results']['page'] )
+		$total      = $this->extract_total( $data );
+		$has_total  = null !== $total;
+		$total      = $has_total ? $total : ( ( max( 1, $page ) - 1 ) * max( 1, $per_page ) ) + count( $files );
+		$api_page   = isset( $data['results']['page'] )
 			? (int) $data['results']['page']
 			: ( isset( $data['page'] ) ? (int) $data['page'] : $page );
-		$api_limit   = isset( $data['results']['per_page'] )
+		$api_limit  = isset( $data['results']['per_page'] )
 			? (int) $data['results']['per_page']
 			: ( isset( $data['per_page'] ) ? (int) $data['per_page'] : $per_page );
-		$safe_page   = max( 1, $api_page );
-		$safe_limit  = max( 1, $api_limit );
-		$items       = array_map( array( $this, 'normalize_file' ), $files );
-		$has_more    = $has_total
+		$safe_page  = max( 1, $api_page );
+		$safe_limit = max( 1, $api_limit );
+		$items      = array_map( array( $this, 'normalize_file' ), $files );
+		$has_more   = $has_total
 			? $total > ( $safe_page * $safe_limit )
 			: count( $files ) === $safe_limit;
 
@@ -396,6 +483,11 @@ final class Api {
 		);
 	}
 
+	/**
+	 * Extract a total count from response metadata.
+	 *
+	 * @param array $data API response.
+	 */
 	private function extract_total( array $data ): ?int {
 		if ( isset( $data['results']['total'] ) ) {
 			return (int) $data['results']['total'];
@@ -409,13 +501,23 @@ final class Api {
 		return null;
 	}
 
+	/**
+	 * Flatten a nested folder tree.
+	 *
+	 * @param array  $tree Folder tree.
+	 * @param string $path Parent path.
+	 * @param int    $depth Current depth.
+	 */
 	private function flatten_tree( array $tree, string $path = '', int $depth = 0 ): array {
 		// Collect this level's folders and sort siblings alphabetically (the tree
 		// API returns upper levels unsorted).
 		$entries = array();
 		foreach ( $tree as $folder_id => $node ) {
 			if ( is_array( $node ) && ! empty( $node['name'] ) ) {
-				$entries[] = array( 'id' => (string) $folder_id, 'node' => $node );
+				$entries[] = array(
+					'id'   => (string) $folder_id,
+					'node' => $node,
+				);
 			}
 		}
 		usort(
@@ -442,9 +544,7 @@ final class Api {
 		return $out;
 	}
 
-	/* --------------------------------------------------------------------- *
-	 * Transport
-	 * --------------------------------------------------------------------- */
+	// Transport.
 
 	/**
 	 * Make an authenticated request, refreshing the token once on 401.
@@ -463,6 +563,15 @@ final class Api {
 		return $result;
 	}
 
+	/**
+	 * Dispatch one HTTP request to Razuna.
+	 *
+	 * @param string $method HTTP method.
+	 * @param string $path API path.
+	 * @param array  $args Request arguments.
+	 * @param bool   $force_refresh Whether to force token refresh.
+	 * @return array|\WP_Error
+	 */
 	private function dispatch( string $method, string $path, array $args, bool $force_refresh ) {
 		$token = $this->oauth->get_access_token();
 		if ( '' === $token ) {
