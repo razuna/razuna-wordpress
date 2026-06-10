@@ -132,6 +132,12 @@ final class Block {
 	private function image_dimensions( array $attributes, string $url ): array {
 		$width  = ! empty( $attributes['width'] ) ? (int) $attributes['width'] : 0;
 		$height = ! empty( $attributes['height'] ) ? (int) $attributes['height'] : 0;
+		$format = $this->format_dimensions( $attributes, $url );
+
+		if ( $format[0] > 0 || $format[1] > 0 ) {
+			return $this->complete_dimensions( $format[0], $format[1], $width, $height );
+		}
+
 		$max    = $this->direct_link_max_dimension( $url );
 
 		if ( $max <= 0 || $width <= 0 || $height <= 0 ) {
@@ -150,14 +156,60 @@ final class Block {
 		);
 	}
 
-	private function direct_link_max_dimension( string $url ): int {
-		$query = wp_parse_url( $url, PHP_URL_QUERY );
-		$type  = '';
+	private function complete_dimensions( int $width, int $height, int $original_width, int $original_height ): array {
+		if ( $width > 0 && $height > 0 ) {
+			return array( $width, $height );
+		}
 
-		if ( is_string( $query ) && '' !== $query ) {
-			$params = array();
-			wp_parse_str( $query, $params );
-			$type = isset( $params['type'] ) ? strtolower( (string) $params['type'] ) : '';
+		if ( $original_width <= 0 || $original_height <= 0 ) {
+			return array( $width, $height );
+		}
+
+		if ( $width > 0 ) {
+			return array( $width, max( 1, (int) round( $width * $original_height / $original_width ) ) );
+		}
+		if ( $height > 0 ) {
+			return array( max( 1, (int) round( $height * $original_width / $original_height ) ), $height );
+		}
+		return array( 0, 0 );
+	}
+
+	private function format_dimensions( array $attributes, string $url ): array {
+		static $formats_by_file = array();
+
+		$params    = $this->direct_link_params( $url );
+		$format_id = isset( $params['format_id'] ) ? trim( (string) $params['format_id'] ) : '';
+		$file_id   = isset( $attributes['fileId'] ) ? trim( (string) $attributes['fileId'] ) : '';
+
+		if ( '' === $format_id || '' === $file_id || ! $this->settings->is_connected() ) {
+			return array( 0, 0 );
+		}
+
+		if ( ! array_key_exists( $file_id, $formats_by_file ) ) {
+			$formats = $this->api->get_file_formats( $file_id );
+			$formats_by_file[ $file_id ] = is_wp_error( $formats ) ? array() : $formats;
+		}
+
+		foreach ( $formats_by_file[ $file_id ] as $format ) {
+			if ( ! is_array( $format ) || ! isset( $format['id'] ) || (string) $format['id'] !== $format_id ) {
+				continue;
+			}
+			return array(
+				! empty( $format['width'] ) ? (int) $format['width'] : 0,
+				! empty( $format['height'] ) ? (int) $format['height'] : 0,
+			);
+		}
+
+		return array( 0, 0 );
+	}
+
+	private function direct_link_max_dimension( string $url ): int {
+		$params = $this->direct_link_params( $url );
+		$type   = isset( $params['type'] ) ? strtolower( (string) $params['type'] ) : '';
+		$format = isset( $params['f'] ) ? strtolower( (string) $params['f'] ) : '';
+
+		if ( '' === $type && in_array( $format, array( 'tl', 'thumbnail_large' ), true ) ) {
+			return 1200;
 		}
 
 		if ( '' === $type ) {
@@ -178,5 +230,16 @@ final class Block {
 			return 400;
 		}
 		return 0;
+	}
+
+	private function direct_link_params( string $url ): array {
+		$query = wp_parse_url( $url, PHP_URL_QUERY );
+		$params = array();
+
+		if ( is_string( $query ) && '' !== $query ) {
+			wp_parse_str( $query, $params );
+		}
+
+		return $params;
 	}
 }

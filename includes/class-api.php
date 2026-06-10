@@ -128,14 +128,15 @@ final class Api {
 			if ( ! is_array( $f ) ) {
 				continue;
 			}
+			$dimensions = $this->format_dimensions( $f );
 			$view     = isset( $f['view_url'] ) ? $this->absolute( (string) $f['view_url'] ) : '';
 			$download = isset( $f['download_url'] ) ? $this->absolute( (string) $f['download_url'] ) : '';
 			$out[]    = array(
 				'id'           => isset( $f['id'] ) ? $f['id'] : ( isset( $f['_id'] ) ? $f['_id'] : '' ),
 				'name'         => isset( $f['name'] ) ? $f['name'] : '',
 				'format'       => isset( $f['format'] ) ? $f['format'] : '',
-				'width'        => $this->image_width( $f ),
-				'height'       => $this->image_height( $f ),
+				'width'        => $dimensions[0],
+				'height'       => $dimensions[1],
 				'view_url'     => '' !== $view ? $view : $download,
 				'download_url' => '' !== $download ? $download : $view,
 			);
@@ -283,6 +284,26 @@ final class Api {
 
 		$raw = $this->raw_json_dimensions( $data );
 		return $raw[1];
+	}
+
+	private function format_dimensions( array $data ): array {
+		$width  = $this->int_field( $data, array( 'width', 'image_width', 'format_width', 'target_width', 'resize_width', 'w' ) );
+		$height = $this->int_field( $data, array( 'height', 'image_height', 'format_height', 'target_height', 'resize_height', 'h' ) );
+
+		if ( $width > 0 && $height > 0 ) {
+			return array( $width, $height );
+		}
+
+		foreach ( array( 'label', 'name' ) as $key ) {
+			if ( empty( $data[ $key ] ) || ! is_string( $data[ $key ] ) ) {
+				continue;
+			}
+			if ( preg_match( '/(\\d+)\\s*[x×]\\s*(\\d+)/i', $data[ $key ], $matches ) ) {
+				return array( (int) $matches[1], (int) $matches[2] );
+			}
+		}
+
+		return array( $width, $height );
 	}
 
 	private function pixels_dimensions( array $data ): array {

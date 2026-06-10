@@ -107,7 +107,8 @@
 
 	function formatSavedFormatLabel( fmt ) {
 		var name = fmt.name || '';
-		var dimensions = formatDimensions( fmt.width, fmt.height );
+		var dims = formatDimensionsForFormat( fmt, {} );
+		var dimensions = formatDimensions( dims.width, dims.height );
 		var format = fmt.format ? String( fmt.format ).toUpperCase() : '';
 		var details = [ dimensions, format ].filter( function ( value ) { return !! value; } ).join( ' ' );
 
@@ -115,6 +116,21 @@
 			return name + ' (' + details + ')';
 		}
 		return name || details || 'Additional format';
+	}
+
+	function dimensionsFromText( text ) {
+		var match;
+
+		if ( ! text ) {
+			return { width: 0, height: 0 };
+		}
+
+		match = String( text ).match( /(\d{1,5})\s*[x×]\s*(\d{1,5})/i );
+		if ( ! match ) {
+			return { width: 0, height: 0 };
+		}
+
+		return dimensionPair( match[ 1 ], match[ 2 ] );
 	}
 
 	function dimensionPair( width, height ) {
@@ -160,9 +176,21 @@
 		return dims;
 	}
 
+	function formatDimensionsForFormat( format, file ) {
+		var dims = completeDimensions( format.width, format.height, file.width, file.height );
+		var parsed;
+
+		if ( dims.width > 0 && dims.height > 0 ) {
+			return dims;
+		}
+
+		parsed = dimensionsFromText( format.label || format.name || '' );
+		return completeDimensions( parsed.width, parsed.height, file.width, file.height );
+	}
+
 	function selectedDimensions( file, variant, format ) {
 		if ( format ) {
-			return completeDimensions( format.width, format.height, file.width, file.height );
+			return formatDimensionsForFormat( format, file );
 		}
 
 		if ( 'large' === variant ) {

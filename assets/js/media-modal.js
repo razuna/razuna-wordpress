@@ -81,9 +81,18 @@
 			return;
 		}
 		var alt = ( payload.alt || payload.name || '' ).replace( /"/g, '&quot;' );
+		var width = parseInt( payload.width, 10 ) || 0;
+		var height = parseInt( payload.height, 10 ) || 0;
+		var dims = '';
 		var html;
 		if ( payload.is_image ) {
-			html = '<img src="' + url + '" alt="' + alt + '" class="razuna-image" />';
+			if ( width > 0 ) {
+				dims += ' width="' + width + '"';
+			}
+			if ( height > 0 ) {
+				dims += ' height="' + height + '"';
+			}
+			html = '<img src="' + url + '" alt="' + alt + '" class="razuna-image"' + dims + ' />';
 		} else {
 			html = '<a href="' + url + '">' + ( payload.name || url ) + '</a>';
 		}
