@@ -13,24 +13,47 @@ namespace Razuna;
 
 defined( 'ABSPATH' ) || exit;
 
+/**
+ * Registers and renders the Razuna Asset block.
+ */
 final class Block {
 
-	/** @var Settings */
+	/**
+	 * Settings service.
+	 *
+	 * @var Settings
+	 */
 	private $settings;
 
-	/** @var Api */
+	/**
+	 * Razuna API client.
+	 *
+	 * @var Api
+	 */
 	private $api;
 
+	/**
+	 * Build the block service.
+	 *
+	 * @param Settings $settings Settings service.
+	 * @param Api      $api Razuna API client.
+	 */
 	public function __construct( Settings $settings, Api $api ) {
 		$this->settings = $settings;
 		$this->api      = $api;
 	}
 
+	/**
+	 * Register block hooks.
+	 */
 	public function register(): void {
 		add_action( 'init', array( $this, 'register_block' ) );
 		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_editor' ) );
 	}
 
+	/**
+	 * Register the dynamic block type.
+	 */
 	public function register_block(): void {
 		if ( ! function_exists( 'register_block_type' ) ) {
 			return;
@@ -41,15 +64,42 @@ final class Block {
 				'api_version'     => 2,
 				'render_callback' => array( $this, 'render' ),
 				'attributes'      => array(
-					'fileId'         => array( 'type' => 'string', 'default' => '' ),
-					'url'            => array( 'type' => 'string', 'default' => '' ),
-					'fullUrl'        => array( 'type' => 'string', 'default' => '' ),
-					'alt'            => array( 'type' => 'string', 'default' => '' ),
-					'name'           => array( 'type' => 'string', 'default' => '' ),
-					'width'          => array( 'type' => 'number', 'default' => 0 ),
-					'height'         => array( 'type' => 'number', 'default' => 0 ),
-					'isImage'        => array( 'type' => 'boolean', 'default' => true ),
-					'linkToOriginal' => array( 'type' => 'boolean', 'default' => false ),
+					'fileId'         => array(
+						'type'    => 'string',
+						'default' => '',
+					),
+					'url'            => array(
+						'type'    => 'string',
+						'default' => '',
+					),
+					'fullUrl'        => array(
+						'type'    => 'string',
+						'default' => '',
+					),
+					'alt'            => array(
+						'type'    => 'string',
+						'default' => '',
+					),
+					'name'           => array(
+						'type'    => 'string',
+						'default' => '',
+					),
+					'width'          => array(
+						'type'    => 'number',
+						'default' => 0,
+					),
+					'height'         => array(
+						'type'    => 'number',
+						'default' => 0,
+					),
+					'isImage'        => array(
+						'type'    => 'boolean',
+						'default' => true,
+					),
+					'linkToOriginal' => array(
+						'type'    => 'boolean',
+						'default' => false,
+					),
 					'align'          => array( 'type' => 'string' ),
 				),
 			)
@@ -61,17 +111,35 @@ final class Block {
 				'api_version'     => 2,
 				'render_callback' => array( $this, 'render_gallery' ),
 				'attributes'      => array(
-					'items'          => array( 'type' => 'array', 'default' => array() ),
-					'columns'        => array( 'type' => 'number', 'default' => 3 ),
-					'imageCrop'      => array( 'type' => 'boolean', 'default' => true ),
-					'linkToOriginal' => array( 'type' => 'boolean', 'default' => false ),
-					'caption'        => array( 'type' => 'string', 'default' => '' ),
+					'items'          => array(
+						'type'    => 'array',
+						'default' => array(),
+					),
+					'columns'        => array(
+						'type'    => 'number',
+						'default' => 3,
+					),
+					'imageCrop'      => array(
+						'type'    => 'boolean',
+						'default' => true,
+					),
+					'linkToOriginal' => array(
+						'type'    => 'boolean',
+						'default' => false,
+					),
+					'caption'        => array(
+						'type'    => 'string',
+						'default' => '',
+					),
 					'align'          => array( 'type' => 'string' ),
 				),
 			)
 		);
 	}
 
+	/**
+	 * Enqueue block editor assets.
+	 */
 	public function enqueue_editor(): void {
 		Plugin::register_picker_asset();
 
@@ -121,7 +189,7 @@ final class Block {
 			: 'class="razuna-asset"';
 
 		if ( $is_image ) {
-			$dims = '';
+			$dims             = '';
 			$image_dimensions = $this->image_dimensions( $attributes, $url );
 			if ( $image_dimensions[0] > 0 ) {
 				$dims .= ' width="' . $image_dimensions[0] . '"';
@@ -196,6 +264,12 @@ final class Block {
 		return sprintf( '<figure %s>%s</figure>', $wrapper, $html );
 	}
 
+	/**
+	 * Render a single Razuna gallery item.
+	 *
+	 * @param array $item Gallery item attributes.
+	 * @param bool  $link_to_original Whether to link to the original asset.
+	 */
 	private function render_gallery_item( array $item, bool $link_to_original ): string {
 		$url = isset( $item['url'] ) ? (string) $item['url'] : '';
 		if ( '' === $url && ! empty( $item['fileId'] ) && $this->settings->is_connected() ) {
@@ -215,12 +289,12 @@ final class Block {
 			return '';
 		}
 
-		$alt = isset( $item['alt'] ) ? (string) $item['alt'] : ( isset( $item['name'] ) ? (string) $item['name'] : '' );
+		$alt      = isset( $item['alt'] ) ? (string) $item['alt'] : ( isset( $item['name'] ) ? (string) $item['name'] : '' );
 		$full_url = isset( $item['fullUrl'] ) ? (string) $item['fullUrl'] : ( isset( $item['full_url'] ) ? (string) $item['full_url'] : '' );
 		$full_url = '' !== $full_url ? $full_url : $url;
-		$width = ! empty( $item['width'] ) ? (int) $item['width'] : 0;
-		$height = ! empty( $item['height'] ) ? (int) $item['height'] : 0;
-		$dims = '';
+		$width    = ! empty( $item['width'] ) ? (int) $item['width'] : 0;
+		$height   = ! empty( $item['height'] ) ? (int) $item['height'] : 0;
+		$dims     = '';
 
 		if ( $width > 0 ) {
 			$dims .= ' width="' . $width . '"';
@@ -248,6 +322,12 @@ final class Block {
 		return '<figure class="wp-block-image size-large razuna-gallery__item">' . $image . '</figure>';
 	}
 
+	/**
+	 * Determine final rendered image dimensions.
+	 *
+	 * @param array  $attributes Block attributes.
+	 * @param string $url Image URL.
+	 */
 	private function image_dimensions( array $attributes, string $url ): array {
 		$width  = ! empty( $attributes['width'] ) ? (int) $attributes['width'] : 0;
 		$height = ! empty( $attributes['height'] ) ? (int) $attributes['height'] : 0;
@@ -257,7 +337,7 @@ final class Block {
 			return $this->complete_dimensions( $format[0], $format[1], $width, $height );
 		}
 
-		$max    = $this->direct_link_max_dimension( $url );
+		$max = $this->direct_link_max_dimension( $url );
 
 		if ( $max <= 0 || $width <= 0 || $height <= 0 ) {
 			return array( $width, $height );
@@ -275,6 +355,14 @@ final class Block {
 		);
 	}
 
+	/**
+	 * Complete one missing dimension from the original aspect ratio.
+	 *
+	 * @param int $width Requested width.
+	 * @param int $height Requested height.
+	 * @param int $original_width Original width.
+	 * @param int $original_height Original height.
+	 */
 	private function complete_dimensions( int $width, int $height, int $original_width, int $original_height ): array {
 		if ( $width > 0 && $height > 0 ) {
 			return array( $width, $height );
@@ -293,6 +381,12 @@ final class Block {
 		return array( 0, 0 );
 	}
 
+	/**
+	 * Return dimensions for the selected saved format.
+	 *
+	 * @param array  $attributes Block attributes.
+	 * @param string $url Image URL.
+	 */
 	private function format_dimensions( array $attributes, string $url ): array {
 		static $formats_by_file = array();
 
@@ -305,7 +399,7 @@ final class Block {
 		}
 
 		if ( ! array_key_exists( $file_id, $formats_by_file ) ) {
-			$formats = $this->api->get_file_formats( $file_id );
+			$formats                     = $this->api->get_file_formats( $file_id );
 			$formats_by_file[ $file_id ] = is_wp_error( $formats ) ? array() : $formats;
 		}
 
@@ -322,6 +416,11 @@ final class Block {
 		return array( 0, 0 );
 	}
 
+	/**
+	 * Infer max dimensions from direct-link parameters.
+	 *
+	 * @param string $url Direct-link URL.
+	 */
 	private function direct_link_max_dimension( string $url ): int {
 		$params = $this->direct_link_params( $url );
 		$type   = isset( $params['type'] ) ? strtolower( (string) $params['type'] ) : '';
@@ -351,8 +450,13 @@ final class Block {
 		return 0;
 	}
 
+	/**
+	 * Parse direct-link query parameters.
+	 *
+	 * @param string $url Direct-link URL.
+	 */
 	private function direct_link_params( string $url ): array {
-		$query = wp_parse_url( $url, PHP_URL_QUERY );
+		$query  = wp_parse_url( $url, PHP_URL_QUERY );
 		$params = array();
 
 		if ( is_string( $query ) && '' !== $query ) {

@@ -13,12 +13,17 @@ namespace Razuna;
 
 defined( 'ABSPATH' ) || exit;
 
+/**
+ * Encrypts and decrypts stored OAuth tokens.
+ */
 final class Crypto {
 
 	/**
 	 * Encrypt a string. Returns a base64 payload prefixed with the cipher used,
 	 * or the plaintext prefixed with "plain:" if no crypto backend is available
 	 * (so the system degrades gracefully rather than fatally).
+	 *
+	 * @param string $plaintext Value to encrypt.
 	 */
 	public static function encrypt( string $plaintext ): string {
 		$key = self::key();
@@ -26,6 +31,7 @@ final class Crypto {
 		if ( function_exists( 'sodium_crypto_secretbox' ) ) {
 			$nonce  = random_bytes( SODIUM_CRYPTO_SECRETBOX_NONCEBYTES );
 			$cipher = sodium_crypto_secretbox( $plaintext, $nonce, $key );
+			// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode -- Encodes binary ciphertext for option storage.
 			return 'sodium:' . base64_encode( $nonce . $cipher );
 		}
 
@@ -33,15 +39,19 @@ final class Crypto {
 			$iv     = random_bytes( 16 );
 			$cipher = openssl_encrypt( $plaintext, 'aes-256-cbc', $key, OPENSSL_RAW_DATA, $iv );
 			if ( false !== $cipher ) {
+				// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode -- Encodes binary ciphertext for option storage.
 				return 'openssl:' . base64_encode( $iv . $cipher );
 			}
 		}
 
+		// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode -- Encodes fallback token storage payload.
 		return 'plain:' . base64_encode( $plaintext );
 	}
 
 	/**
 	 * Decrypt a payload produced by encrypt(). Returns '' on failure.
+	 *
+	 * @param string $payload Encrypted payload.
 	 */
 	public static function decrypt( string $payload ): string {
 		$pos = strpos( $payload, ':' );
@@ -49,7 +59,8 @@ final class Crypto {
 			return '';
 		}
 		$scheme = substr( $payload, 0, $pos );
-		$raw    = base64_decode( substr( $payload, $pos + 1 ), true );
+		// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode -- Decodes token storage payload created by encrypt().
+		$raw = base64_decode( substr( $payload, $pos + 1 ), true );
 		if ( false === $raw ) {
 			return '';
 		}

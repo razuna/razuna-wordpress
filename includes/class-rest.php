@@ -13,25 +13,50 @@ namespace Razuna;
 
 defined( 'ABSPATH' ) || exit;
 
+/**
+ * Registers the same-origin REST proxy routes.
+ */
 final class Rest {
 
 	const NAMESPACE = 'razuna/v1';
 
-	/** @var Settings */
+	/**
+	 * Settings service.
+	 *
+	 * @var Settings
+	 */
 	private $settings;
 
-	/** @var OAuth */
+	/**
+	 * OAuth service.
+	 *
+	 * @var OAuth
+	 */
 	private $oauth;
 
-	/** @var Api */
+	/**
+	 * Razuna API client.
+	 *
+	 * @var Api
+	 */
 	private $api;
 
+	/**
+	 * Build the REST proxy service.
+	 *
+	 * @param Settings $settings Settings service.
+	 * @param OAuth    $oauth OAuth service.
+	 * @param Api      $api Razuna API client.
+	 */
 	public function __construct( Settings $settings, OAuth $oauth, Api $api ) {
 		$this->settings = $settings;
 		$this->oauth    = $oauth;
 		$this->api      = $api;
 	}
 
+	/**
+	 * Register REST routes.
+	 */
 	public function register_routes(): void {
 		$args_ws = array(
 			'methods'             => 'GET',
@@ -62,7 +87,10 @@ final class Rest {
 				'permission_callback' => array( $this, 'can_use' ),
 				'callback'            => array( $this, 'folders' ),
 				'args'                => array(
-					'workspace_id' => array( 'required' => true, 'sanitize_callback' => 'sanitize_text_field' ),
+					'workspace_id' => array(
+						'required'          => true,
+						'sanitize_callback' => 'sanitize_text_field',
+					),
 				),
 			)
 		);
@@ -75,10 +103,25 @@ final class Rest {
 				'permission_callback' => array( $this, 'can_use' ),
 				'callback'            => array( $this, 'files' ),
 				'args'                => array(
-					'workspace_id' => array( 'required' => true, 'sanitize_callback' => 'sanitize_text_field' ),
-					'folder_id'    => array( 'required' => false, 'default' => '', 'sanitize_callback' => 'sanitize_text_field' ),
-					'page'         => array( 'required' => false, 'default' => 1, 'sanitize_callback' => 'absint' ),
-					'per_page'     => array( 'required' => false, 'default' => 25, 'sanitize_callback' => 'absint' ),
+					'workspace_id' => array(
+						'required'          => true,
+						'sanitize_callback' => 'sanitize_text_field',
+					),
+					'folder_id'    => array(
+						'required'          => false,
+						'default'           => '',
+						'sanitize_callback' => 'sanitize_text_field',
+					),
+					'page'         => array(
+						'required'          => false,
+						'default'           => 1,
+						'sanitize_callback' => 'absint',
+					),
+					'per_page'     => array(
+						'required'          => false,
+						'default'           => 25,
+						'sanitize_callback' => 'absint',
+					),
 				),
 			)
 		);
@@ -91,7 +134,10 @@ final class Rest {
 				'permission_callback' => array( $this, 'can_use' ),
 				'callback'            => array( $this, 'formats' ),
 				'args'                => array(
-					'file_id' => array( 'required' => true, 'sanitize_callback' => 'sanitize_text_field' ),
+					'file_id' => array(
+						'required'          => true,
+						'sanitize_callback' => 'sanitize_text_field',
+					),
 				),
 			)
 		);
@@ -104,11 +150,28 @@ final class Rest {
 				'permission_callback' => array( $this, 'can_use' ),
 				'callback'            => array( $this, 'search' ),
 				'args'                => array(
-					'workspace_id' => array( 'required' => true, 'sanitize_callback' => 'sanitize_text_field' ),
-					'term'         => array( 'required' => true, 'sanitize_callback' => 'sanitize_text_field' ),
-					'folder_id'    => array( 'required' => false, 'sanitize_callback' => 'sanitize_text_field' ),
-					'page'         => array( 'required' => false, 'default' => 1, 'sanitize_callback' => 'absint' ),
-					'per_page'     => array( 'required' => false, 'default' => 25, 'sanitize_callback' => 'absint' ),
+					'workspace_id' => array(
+						'required'          => true,
+						'sanitize_callback' => 'sanitize_text_field',
+					),
+					'term'         => array(
+						'required'          => true,
+						'sanitize_callback' => 'sanitize_text_field',
+					),
+					'folder_id'    => array(
+						'required'          => false,
+						'sanitize_callback' => 'sanitize_text_field',
+					),
+					'page'         => array(
+						'required'          => false,
+						'default'           => 1,
+						'sanitize_callback' => 'absint',
+					),
+					'per_page'     => array(
+						'required'          => false,
+						'default'           => 25,
+						'sanitize_callback' => 'absint',
+					),
 				),
 			)
 		);
@@ -121,12 +184,35 @@ final class Rest {
 				'permission_callback' => array( $this, 'can_use' ),
 				'callback'            => array( $this, 'import' ),
 				'args'                => array(
-					'file_id'     => array( 'required' => true, 'sanitize_callback' => 'sanitize_text_field' ),
-					'variant'     => array( 'required' => false, 'default' => 'full', 'sanitize_callback' => 'sanitize_text_field' ),
-					'format_id'   => array( 'required' => false, 'default' => '', 'sanitize_callback' => 'sanitize_text_field' ),
-					'as_download' => array( 'required' => false, 'default' => false, 'sanitize_callback' => 'rest_sanitize_boolean' ),
-					'post_id'     => array( 'required' => false, 'default' => 0, 'sanitize_callback' => 'absint' ),
-					'reuse'       => array( 'required' => false, 'default' => true, 'sanitize_callback' => 'rest_sanitize_boolean' ),
+					'file_id'     => array(
+						'required'          => true,
+						'sanitize_callback' => 'sanitize_text_field',
+					),
+					'variant'     => array(
+						'required'          => false,
+						'default'           => 'full',
+						'sanitize_callback' => 'sanitize_text_field',
+					),
+					'format_id'   => array(
+						'required'          => false,
+						'default'           => '',
+						'sanitize_callback' => 'sanitize_text_field',
+					),
+					'as_download' => array(
+						'required'          => false,
+						'default'           => false,
+						'sanitize_callback' => 'rest_sanitize_boolean',
+					),
+					'post_id'     => array(
+						'required'          => false,
+						'default'           => 0,
+						'sanitize_callback' => 'absint',
+					),
+					'reuse'       => array(
+						'required'          => false,
+						'default'           => true,
+						'sanitize_callback' => 'rest_sanitize_boolean',
+					),
 				),
 			)
 		);
@@ -150,6 +236,9 @@ final class Rest {
 		return current_user_can( 'upload_files' );
 	}
 
+	/**
+	 * Return connection status.
+	 */
 	public function status(): \WP_REST_Response {
 		return rest_ensure_response(
 			array(
@@ -159,14 +248,27 @@ final class Rest {
 		);
 	}
 
+	/**
+	 * Return Razuna workspaces.
+	 */
 	public function workspaces() {
 		return $this->respond( $this->api->get_workspaces() );
 	}
 
+	/**
+	 * Return folders for a workspace.
+	 *
+	 * @param \WP_REST_Request $req REST request.
+	 */
 	public function folders( \WP_REST_Request $req ) {
 		return $this->respond( $this->api->get_folders( (string) $req->get_param( 'workspace_id' ) ) );
 	}
 
+	/**
+	 * Return files for a folder.
+	 *
+	 * @param \WP_REST_Request $req REST request.
+	 */
 	public function files( \WP_REST_Request $req ) {
 		return $this->respond(
 			$this->api->get_folder_content(
@@ -178,10 +280,20 @@ final class Rest {
 		);
 	}
 
+	/**
+	 * Return saved formats for a file.
+	 *
+	 * @param \WP_REST_Request $req REST request.
+	 */
 	public function formats( \WP_REST_Request $req ) {
 		return $this->respond( $this->api->get_file_formats( (string) $req->get_param( 'file_id' ) ) );
 	}
 
+	/**
+	 * Search Razuna files.
+	 *
+	 * @param \WP_REST_Request $req REST request.
+	 */
 	public function search( \WP_REST_Request $req ) {
 		return $this->respond(
 			$this->api->search(
@@ -194,6 +306,11 @@ final class Rest {
 		);
 	}
 
+	/**
+	 * Import one Razuna file into the WordPress media library.
+	 *
+	 * @param \WP_REST_Request $req REST request.
+	 */
 	public function import( \WP_REST_Request $req ) {
 		$result = $this->import_item(
 			array(
@@ -212,6 +329,11 @@ final class Rest {
 		return rest_ensure_response( $result );
 	}
 
+	/**
+	 * Import multiple Razuna files into the WordPress media library.
+	 *
+	 * @param \WP_REST_Request $req REST request.
+	 */
 	public function imports( \WP_REST_Request $req ) {
 		$params = $req->get_json_params();
 		if ( ! is_array( $params ) ) {
@@ -225,7 +347,7 @@ final class Rest {
 		$errors  = array();
 
 		foreach ( $items as $index => $item ) {
-			$item = is_array( $item ) ? $item : array();
+			$item   = is_array( $item ) ? $item : array();
 			$result = $this->import_item(
 				array(
 					'file_id'     => isset( $item['file_id'] ) ? sanitize_text_field( (string) $item['file_id'] ) : '',
@@ -257,6 +379,12 @@ final class Rest {
 		);
 	}
 
+	/**
+	 * Import a normalized item into the WordPress media library.
+	 *
+	 * @param array $args Import arguments.
+	 * @return array|\WP_Error Attachment payload or error.
+	 */
 	private function import_item( array $args ) {
 		$file_id = isset( $args['file_id'] ) ? trim( (string) $args['file_id'] ) : '';
 		if ( '' === $file_id ) {
@@ -268,9 +396,9 @@ final class Rest {
 			return $file;
 		}
 
-		$variant = isset( $args['variant'] ) ? trim( (string) $args['variant'] ) : 'full';
-		$variant = '' !== $variant ? $variant : 'full';
-		$format_id = isset( $args['format_id'] ) ? trim( (string) $args['format_id'] ) : '';
+		$variant     = isset( $args['variant'] ) ? trim( (string) $args['variant'] ) : 'full';
+		$variant     = '' !== $variant ? $variant : 'full';
+		$format_id   = isset( $args['format_id'] ) ? trim( (string) $args['format_id'] ) : '';
 		$as_download = ! empty( $args['as_download'] );
 		$variant_key = $this->variant_key( $variant, $format_id, $as_download );
 
@@ -303,6 +431,13 @@ final class Rest {
 		return $this->attachment_payload( $attachment_id, false );
 	}
 
+	/**
+	 * Build the stored Razuna import variant key.
+	 *
+	 * @param string $variant Import variant.
+	 * @param string $format_id Format ID.
+	 * @param bool   $as_download Whether to prefer download URLs.
+	 */
 	private function variant_key( string $variant, string $format_id, bool $as_download ): string {
 		$key = 'format' === $variant && '' !== $format_id ? 'format:' . $format_id : $variant;
 		if ( $as_download ) {
@@ -311,6 +446,12 @@ final class Rest {
 		return sanitize_key( str_replace( ':', '-', $key ) );
 	}
 
+	/**
+	 * Find an existing WordPress attachment imported from the same Razuna file.
+	 *
+	 * @param string $file_id Razuna file ID.
+	 * @param string $variant_key Import variant key.
+	 */
 	private function find_existing_import( string $file_id, string $variant_key ): int {
 		$posts = get_posts(
 			array(
@@ -318,6 +459,7 @@ final class Rest {
 				'post_status'    => 'inherit',
 				'posts_per_page' => 1,
 				'fields'         => 'ids',
+				// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Needed to deduplicate Razuna imports by stored file and variant metadata.
 				'meta_query'     => array(
 					'relation' => 'AND',
 					array(
@@ -335,6 +477,15 @@ final class Rest {
 		return ! empty( $posts[0] ) ? (int) $posts[0] : 0;
 	}
 
+	/**
+	 * Resolve the source URL to sideload for a Razuna file.
+	 *
+	 * @param array  $file Razuna file payload.
+	 * @param string $variant Import variant.
+	 * @param string $format_id Format ID.
+	 * @param bool   $as_download Whether to prefer download URLs.
+	 * @return array|\WP_Error Source URL payload or error.
+	 */
 	private function source_for_import( array $file, string $variant, string $format_id, bool $as_download ) {
 		if ( 'format' === $variant && '' !== $format_id ) {
 			$formats = $this->api->get_file_formats( (string) $file['id'] );
@@ -380,6 +531,14 @@ final class Rest {
 		return new \WP_Error( 'razuna_no_import_url', __( 'Razuna did not return an importable URL for this file.', 'razuna-dam' ), array( 'status' => 422 ) );
 	}
 
+	/**
+	 * Download and create a WordPress attachment from a Razuna source URL.
+	 *
+	 * @param array  $file Razuna file payload.
+	 * @param string $source_url Source URL.
+	 * @param int    $post_id Parent post ID.
+	 * @return int|\WP_Error Attachment ID or error.
+	 */
 	private function sideload_file( array $file, string $source_url, int $post_id ) {
 		require_once ABSPATH . 'wp-admin/includes/file.php';
 		require_once ABSPATH . 'wp-admin/includes/media.php';
@@ -400,7 +559,7 @@ final class Rest {
 			'name'     => $name,
 			'tmp_name' => $tmp,
 		);
-		$post_data = array(
+		$post_data  = array(
 			'post_title'   => sanitize_text_field( preg_replace( '/\.[^.]+$/', '', (string) ( $file['name'] ?? $name ) ) ),
 			'post_content' => isset( $file['description'] ) ? wp_kses_post( (string) $file['description'] ) : '',
 		);
@@ -412,6 +571,12 @@ final class Rest {
 		return $attachment_id;
 	}
 
+	/**
+	 * Build a media-library attachment response payload.
+	 *
+	 * @param int  $attachment_id Attachment ID.
+	 * @param bool $reused Whether an existing attachment was reused.
+	 */
 	private function attachment_payload( int $attachment_id, bool $reused ): array {
 		$payload = wp_prepare_attachment_for_js( $attachment_id );
 		if ( ! is_array( $payload ) ) {
@@ -433,6 +598,8 @@ final class Rest {
 	/**
 	 * Convert an Api result (array|WP_Error) into a REST response, mapping the
 	 * "not connected" case to a 409 so the UI can prompt to connect.
+	 *
+	 * @param mixed $result API result.
 	 */
 	private function respond( $result ) {
 		if ( is_wp_error( $result ) ) {

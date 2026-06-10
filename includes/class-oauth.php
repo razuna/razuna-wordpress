@@ -17,33 +17,53 @@ namespace Razuna;
 
 defined( 'ABSPATH' ) || exit;
 
+/**
+ * Manages Razuna OAuth connection, callback, token storage, and refresh.
+ */
 final class OAuth {
 
-	const CLIENT_OPTION = 'razuna_client'; // { client_id, redirect_uri, server_url }.
-	const TX_TRANSIENT  = 'razuna_oauth_tx';
+	const CLIENT_OPTION  = 'razuna_client'; // { client_id, redirect_uri, server_url }.
+	const TX_TRANSIENT   = 'razuna_oauth_tx';
 	const META_TRANSIENT = 'razuna_oauth_meta_'; // + md5(server) -> discovery doc.
-	const SCOPE         = 'mcp:read mcp:write';
+	const SCOPE          = 'mcp:read mcp:write';
 
-	/** @var Settings */
+	/**
+	 * Settings service.
+	 *
+	 * @var Settings
+	 */
 	private $settings;
 
-	/** @var string Last client-registration error, surfaced to the settings page. */
+	/**
+	 * Last client-registration error, surfaced to the settings page.
+	 *
+	 * @var string
+	 */
 	private $last_error = '';
 
+	/**
+	 * Build the OAuth service.
+	 *
+	 * @param Settings $settings Settings service.
+	 */
 	public function __construct( Settings $settings ) {
 		$this->settings = $settings;
 	}
 
+	/**
+	 * Register OAuth hooks.
+	 */
 	public function register(): void {
 		add_action( 'admin_post_razuna_oauth_connect', array( $this, 'handle_connect' ) );
 		add_action( 'admin_post_razuna_oauth_disconnect', array( $this, 'handle_disconnect' ) );
 		add_action( 'admin_init', array( $this, 'maybe_handle_callback' ) );
 	}
 
-	/* --------------------------------------------------------------------- *
-	 * Connect / callback / disconnect
-	 * --------------------------------------------------------------------- */
+	// Connect / callback / disconnect.
 
+	/**
+	 * Start the OAuth authorization flow.
+	 */
 	public function handle_connect(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( esc_html__( 'You are not allowed to do this.', 'razuna-dam' ) );
@@ -90,7 +110,8 @@ final class OAuth {
 			$authorize
 		);
 
-		wp_redirect( $url ); // External Razuna URL; not wp_safe_redirect.
+		// phpcs:ignore WordPress.Security.SafeRedirect.wp_redirect_wp_redirect -- Redirects to the configured external Razuna OAuth endpoint.
+		wp_redirect( $url );
 		exit;
 	}
 
@@ -101,7 +122,9 @@ final class OAuth {
 		if ( ! is_admin() ) {
 			return;
 		}
-		$page     = isset( $_GET['page'] ) ? sanitize_text_field( wp_unslash( $_GET['page'] ) ) : '';
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- OAuth callback is validated with PKCE state.
+		$page = isset( $_GET['page'] ) ? sanitize_text_field( wp_unslash( $_GET['page'] ) ) : '';
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- OAuth callback is validated with PKCE state.
 		$callback = isset( $_GET['razuna_oauth'] ) ? sanitize_text_field( wp_unslash( $_GET['razuna_oauth'] ) ) : '';
 		if ( 'razuna' !== $page || 'callback' !== $callback ) {
 			return;
@@ -111,12 +134,16 @@ final class OAuth {
 		}
 
 		// Provider-reported error.
+			// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- OAuth callback is validated with PKCE state.
 		if ( isset( $_GET['error'] ) ) {
+			// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- OAuth callback is validated with PKCE state.
 			$desc = isset( $_GET['error_description'] ) ? sanitize_text_field( wp_unslash( $_GET['error_description'] ) ) : sanitize_text_field( wp_unslash( $_GET['error'] ) );
 			$this->redirect_with_error( $desc );
 		}
 
-		$code  = isset( $_GET['code'] ) ? sanitize_text_field( wp_unslash( $_GET['code'] ) ) : '';
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- OAuth callback is validated with PKCE state.
+		$code = isset( $_GET['code'] ) ? sanitize_text_field( wp_unslash( $_GET['code'] ) ) : '';
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- OAuth callback is validated with PKCE state.
 		$state = isset( $_GET['state'] ) ? sanitize_text_field( wp_unslash( $_GET['state'] ) ) : '';
 		$tx    = get_transient( self::TX_TRANSIENT );
 
@@ -147,6 +174,9 @@ final class OAuth {
 		exit;
 	}
 
+	/**
+	 * Disconnect the site from Razuna.
+	 */
 	public function handle_disconnect(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( esc_html__( 'You are not allowed to do this.', 'razuna-dam' ) );
@@ -159,9 +189,7 @@ final class OAuth {
 		exit;
 	}
 
-	/* --------------------------------------------------------------------- *
-	 * Access token lifecycle
-	 * --------------------------------------------------------------------- */
+	// Access token lifecycle.
 
 	/**
 	 * Return a currently-valid access token, refreshing if needed. '' if not
@@ -185,6 +213,11 @@ final class OAuth {
 		return ! empty( $tokens['access_token'] ) ? (string) $tokens['access_token'] : '';
 	}
 
+	/**
+	 * Refresh an access token.
+	 *
+	 * @param string $refresh_token Refresh token.
+	 */
 	private function refresh( string $refresh_token ): string {
 		$token = $this->post_token(
 			array(
@@ -204,8 +237,13 @@ final class OAuth {
 		return (string) $token['access_token'];
 	}
 
+	/**
+	 * Persist a token endpoint response.
+	 *
+	 * @param array $token Token response.
+	 */
 	private function store_token_response( array $token ): void {
-		$existing = $this->settings->get_tokens();
+		$existing   = $this->settings->get_tokens();
 		$expires_in = isset( $token['expires_in'] ) ? (int) $token['expires_in'] : 600;
 
 		$this->settings->set_tokens(
@@ -253,10 +291,11 @@ final class OAuth {
 		$this->settings->set_connection( $info );
 	}
 
-	/* --------------------------------------------------------------------- *
-	 * Client registration + discovery
-	 * --------------------------------------------------------------------- */
+	// Client registration + discovery.
 
+	/**
+	 * Return the registered client ID.
+	 */
 	private function client_id(): string {
 		$client = get_option( self::CLIENT_OPTION, array() );
 		return ( is_array( $client ) && ! empty( $client['client_id'] ) ) ? (string) $client['client_id'] : '';
@@ -267,8 +306,8 @@ final class OAuth {
 	 * URI. Re-registers if the server URL or redirect URI changed.
 	 */
 	private function ensure_client(): string {
-		$client = get_option( self::CLIENT_OPTION, array() );
-		$server = $this->settings->get_server_url();
+		$client   = get_option( self::CLIENT_OPTION, array() );
+		$server   = $this->settings->get_server_url();
 		$redirect = $this->redirect_uri();
 
 		if (
@@ -318,7 +357,7 @@ final class OAuth {
 		$code = wp_remote_retrieve_response_code( $resp );
 		$data = json_decode( wp_remote_retrieve_body( $resp ), true );
 		if ( ( 200 !== $code && 201 !== $code ) || empty( $data['client_id'] ) ) {
-			$detail = ( is_array( $data ) && ! empty( $data['error_description'] ) ) ? $data['error_description'] : sprintf( 'HTTP %d', $code );
+			$detail           = ( is_array( $data ) && ! empty( $data['error_description'] ) ) ? $data['error_description'] : sprintf( 'HTTP %d', $code );
 			$this->last_error = sprintf(
 				/* translators: %s: error detail from Razuna */
 				__( 'Razuna rejected the app registration: %s', 'razuna-dam' ),
@@ -340,6 +379,9 @@ final class OAuth {
 		return (string) $data['client_id'];
 	}
 
+	/**
+	 * Build the OAuth client display name.
+	 */
 	private function client_name(): string {
 		$name = wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES );
 		$host = wp_parse_url( home_url(), PHP_URL_HOST );
@@ -356,6 +398,9 @@ final class OAuth {
 	/**
 	 * Resolve an OAuth endpoint from the server's authorization-server metadata,
 	 * falling back to the conventional /oauth/* path.
+	 *
+	 * @param string $key Metadata key.
+	 * @param string $fallback_path Fallback endpoint path.
 	 */
 	private function endpoint( string $key, string $fallback_path ): string {
 		$meta = $this->discovery();
@@ -365,6 +410,9 @@ final class OAuth {
 		return $this->settings->get_server_url() . $fallback_path;
 	}
 
+	/**
+	 * Return OAuth authorization-server metadata.
+	 */
 	private function discovery(): array {
 		$server = $this->settings->get_server_url();
 		if ( '' === $server ) {
@@ -399,13 +447,12 @@ final class OAuth {
 		return $meta;
 	}
 
-	/* --------------------------------------------------------------------- *
-	 * Helpers
-	 * --------------------------------------------------------------------- */
+	// Helpers.
 
 	/**
 	 * POST to the token endpoint (application/x-www-form-urlencoded).
 	 *
+	 * @param array $params Token request params.
 	 * @return array|\WP_Error Decoded JSON token response, or WP_Error.
 	 */
 	private function post_token( array $params ) {
@@ -433,10 +480,21 @@ final class OAuth {
 		return is_array( $data ) ? $data : new \WP_Error( 'razuna_token', __( 'Invalid token response.', 'razuna-dam' ) );
 	}
 
+	/**
+	 * Base64url encode bytes without padding.
+	 *
+	 * @param string $bytes Raw bytes.
+	 */
 	private function base64url( string $bytes ): string {
+		// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode -- Encodes random PKCE/state bytes.
 		return rtrim( strtr( base64_encode( $bytes ), '+/', '-_' ), '=' );
 	}
 
+	/**
+	 * Redirect back to settings with an error message.
+	 *
+	 * @param string $message Error message.
+	 */
 	private function redirect_with_error( string $message ): void {
 		wp_safe_redirect( add_query_arg( 'razuna_msg', rawurlencode( $message ), admin_url( 'options-general.php?page=razuna' ) ) );
 		exit;
