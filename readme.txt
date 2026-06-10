@@ -4,7 +4,7 @@ Tags: dam, digital asset management, media, images, razuna
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 1.1.0
+Stable tag: 1.2.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -24,8 +24,16 @@ source of truth.
   from a familiar picker in both the block editor and the classic editor.
 * **Insert images or links** — choose a size (full, large, thumbnail) or one of
   your saved Razuna formats, or insert a download link.
+* **Build galleries** — select multiple Razuna images for a direct-link Razuna
+  Gallery block, or import them into a native WordPress gallery when attachment
+  IDs are required.
+* **Use Razuna anywhere media is chosen** — Razuna actions are available in
+  core media blocks, the classic editor, the Media Library and featured-image
+  workflows.
 * **No duplication** — inserted images point at durable Razuna links, so the file
   stays in Razuna. Editing or replacing it there updates everywhere it is used.
+  When a native WordPress feature requires an attachment, the plugin imports a
+  managed copy and records the original Razuna source metadata.
 * **Multi-region & self-hosted** — works with Razuna US, Razuna EU, or your own
   custom / dedicated Razuna server.
 
@@ -69,8 +77,9 @@ Service provider and legal terms:
    enter your Razuna server URL. Save.
 4. Click **Connect Razuna**, sign in, and approve access. You will be returned to
    the settings page showing the connected account.
-5. In a post or page, add the **Razuna Asset** block (block editor) or click
-   **Razuna** next to **Add Media** (classic editor) to browse and insert assets.
+5. In a post or page, add the **Razuna Asset** or **Razuna Gallery** block, use
+   the Razuna toolbar action on core media blocks, or click **Razuna** next to
+   **Add Media** (classic editor) to browse and insert assets.
 
 == Frequently Asked Questions ==
 
@@ -96,6 +105,12 @@ No. The token is stored encrypted and used only server-side. The editor's asset
 picker talks to your own site (a same-origin REST proxy); the token never reaches
 the browser. Embedded images use separate signed public links.
 
+= Why do some Razuna assets appear in the WordPress Media Library? =
+
+Direct Razuna embeds remain the default. The plugin imports a managed WordPress
+attachment only when the selected WordPress workflow needs an attachment ID, such
+as featured images or native galleries.
+
 == Screenshots ==
 
 1. Settings → choose your Razuna server and connect with OAuth.
@@ -103,6 +118,12 @@ the browser. Embedded images use separate signed public links.
 3. Choose how to insert: a size, a saved format, or a download link.
 
 == Changelog ==
+
+= 1.2.0 =
+* Added direct-link Razuna Gallery block with multi-select image picking.
+* Added managed WordPress imports for native media workflows that require attachment IDs.
+* Added Razuna import actions for core media blocks, featured images, the Media Library and media modal workflows.
+* Imported attachments now store source Razuna file metadata.
 
 = 1.1.0 =
 * Workspace dropdown now keeps "My workspace" first and sorts the remaining workspaces alphabetically.
@@ -113,6 +134,9 @@ the browser. Embedded images use separate signed public links.
   selection, download links, "Razuna Asset" block and classic-editor inserter.
 
 == Upgrade Notice ==
+
+= 1.2.0 =
+Adds Razuna galleries and hybrid WordPress Media Library imports for native media workflows.
 
 = 1.1.0 =
 Adds workspace sorting and paged picker results for larger Razuna libraries.

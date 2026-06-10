@@ -68,6 +68,11 @@ final class Plugin {
 
 		// Editor assets: media-library "Razuna" tab + shared picker.
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_editor_assets' ) );
+		add_action( 'wp_enqueue_media', array( $this, 'enqueue_media_extensions' ) );
+		add_action( 'media_buttons', array( $this, 'render_media_button' ), 20 );
+		add_filter( 'media_view_settings', array( $this, 'media_view_settings' ), 10, 2 );
+		add_filter( 'media_view_strings', array( $this, 'media_view_strings' ), 10, 2 );
+		add_filter( 'attachment_fields_to_edit', array( $this, 'attachment_fields_to_edit' ), 10, 2 );
 
 		// Settings link on the Plugins screen.
 		add_filter(
@@ -91,20 +96,32 @@ final class Plugin {
 	}
 
 	/**
-	 * Enqueue the classic-editor "Add from Razuna" button + shared picker on the
-	 * post-editor / upload screens. The picker talks only to the same-origin REST
-	 * proxy, so no token is exposed to the browser. (Block editor assets are
-	 * enqueued by Block::enqueue_editor via enqueue_block_editor_assets.)
+	 * Enqueue shared admin media integrations on post/media screens. The picker
+	 * talks only to the same-origin REST proxy, so no token is exposed to the
+	 * browser. (Block editor assets are enqueued by Block::enqueue_editor via
+	 * enqueue_block_editor_assets.)
 	 */
 	public function enqueue_editor_assets( string $hook ): void {
 		if ( ! current_user_can( 'upload_files' ) ) {
 			return;
 		}
-		if ( ! in_array( $hook, array( 'post.php', 'post-new.php', 'upload.php' ), true ) ) {
+		if ( ! in_array( $hook, array( 'post.php', 'post-new.php', 'upload.php', 'media.php', 'media-new.php' ), true ) ) {
 			return;
 		}
 
 		wp_enqueue_media();
+		$this->enqueue_media_extensions();
+	}
+
+	/**
+	 * Enqueue Razuna media extensions whenever WordPress media JS is present.
+	 * This catches third-party admin pages that correctly call wp_enqueue_media().
+	 */
+	public function enqueue_media_extensions(): void {
+		if ( ! current_user_can( 'upload_files' ) ) {
+			return;
+		}
+
 		self::register_picker_asset();
 		wp_enqueue_style( 'razuna-admin' );
 		wp_enqueue_script( 'razuna-picker' );
@@ -117,7 +134,69 @@ final class Plugin {
 		);
 	}
 
-	private static function asset_version( string $relative_path ): string {
+	public function render_media_button( string $editor_id = 'content' ): void {
+		if ( ! current_user_can( 'upload_files' ) ) {
+			return;
+		}
+
+		printf(
+			'<button type="button" class="button razuna-media-button" data-editor="%s"><span class="dashicons dashicons-images-alt2" aria-hidden="true"></span> %s</button>',
+			esc_attr( $editor_id ),
+			esc_html__( 'Razuna', 'razuna-dam' )
+		);
+	}
+
+	public function media_view_settings( array $settings, $post ): array {
+		if ( ! current_user_can( 'upload_files' ) ) {
+			return $settings;
+		}
+
+		$settings['razuna'] = $this->frontend_config();
+		return $settings;
+	}
+
+	public function media_view_strings( array $strings, $post ): array {
+		if ( ! current_user_can( 'upload_files' ) ) {
+			return $strings;
+		}
+
+		$strings['razuna'] = __( 'Razuna', 'razuna-dam' );
+		$strings['razunaImport'] = __( 'Import from Razuna', 'razuna-dam' );
+		$strings['razunaSetFeatured'] = __( 'Set from Razuna', 'razuna-dam' );
+		return $strings;
+	}
+
+	public function attachment_fields_to_edit( array $form_fields, \WP_Post $post ): array {
+		$file_id = (string) get_post_meta( $post->ID, '_razuna_file_id', true );
+		if ( '' === $file_id ) {
+			return $form_fields;
+		}
+
+		$variant = (string) get_post_meta( $post->ID, '_razuna_variant', true );
+		$source_url = (string) get_post_meta( $post->ID, '_razuna_source_url', true );
+		$imported_at = (string) get_post_meta( $post->ID, '_razuna_imported_at', true );
+		$details = sprintf(
+			'%s<br><code>%s</code><br>%s: <code>%s</code><br>%s: %s',
+			esc_html__( 'Imported from Razuna.', 'razuna-dam' ),
+			esc_html( $file_id ),
+			esc_html__( 'Variant', 'razuna-dam' ),
+			esc_html( $variant ),
+			esc_html__( 'Imported', 'razuna-dam' ),
+			esc_html( $imported_at )
+		);
+		if ( '' !== $source_url ) {
+			$details .= '<br><a href="' . esc_url( $source_url ) . '" target="_blank" rel="noopener">' . esc_html__( 'Open Razuna source', 'razuna-dam' ) . '</a>';
+		}
+
+		$form_fields['razuna_source'] = array(
+			'label' => __( 'Razuna', 'razuna-dam' ),
+			'input' => 'html',
+			'html'  => $details,
+		);
+		return $form_fields;
+	}
+
+	public static function asset_version( string $relative_path ): string {
 		$path = RAZUNA_PLUGIN_DIR . ltrim( $relative_path, '/' );
 
 		if ( file_exists( $path ) ) {
@@ -140,9 +219,15 @@ final class Plugin {
 				'tabLabel'      => __( 'Razuna', 'razuna-dam' ),
 				'searchPlaceholder' => __( 'Search your Razuna assets…', 'razuna-dam' ),
 				'insert'        => __( 'Insert into post', 'razuna-dam' ),
+				'insertGallery' => __( 'Insert gallery', 'razuna-dam' ),
+				'insertFromRazuna' => __( 'Insert from Razuna', 'razuna-dam' ),
+				'import'        => __( 'Import', 'razuna-dam' ),
+				'importSelected' => __( 'Import selected', 'razuna-dam' ),
+				'importFromRazuna' => __( 'Import from Razuna', 'razuna-dam' ),
 				'notConnected'  => __( 'Connect your Razuna account in Settings → Razuna to browse your assets.', 'razuna-dam' ),
 				'loading'       => __( 'Loading…', 'razuna-dam' ),
 				'noResults'     => __( 'No assets found.', 'razuna-dam' ),
+				'selected'      => __( 'selected', 'razuna-dam' ),
 			),
 		);
 	}

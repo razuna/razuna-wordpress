@@ -54,6 +54,22 @@ final class Block {
 				),
 			)
 		);
+
+		register_block_type(
+			'razuna/gallery',
+			array(
+				'api_version'     => 2,
+				'render_callback' => array( $this, 'render_gallery' ),
+				'attributes'      => array(
+					'items'          => array( 'type' => 'array', 'default' => array() ),
+					'columns'        => array( 'type' => 'number', 'default' => 3 ),
+					'imageCrop'      => array( 'type' => 'boolean', 'default' => true ),
+					'linkToOriginal' => array( 'type' => 'boolean', 'default' => false ),
+					'caption'        => array( 'type' => 'string', 'default' => '' ),
+					'align'          => array( 'type' => 'string' ),
+				),
+			)
+		);
 	}
 
 	public function enqueue_editor(): void {
@@ -65,8 +81,8 @@ final class Block {
 		wp_enqueue_script(
 			'razuna-block',
 			RAZUNA_PLUGIN_URL . 'assets/js/block.js',
-			array( 'wp-blocks', 'wp-element', 'wp-block-editor', 'wp-components', 'wp-i18n', 'razuna-picker' ),
-			RAZUNA_VERSION,
+			array( 'wp-blocks', 'wp-element', 'wp-block-editor', 'wp-components', 'wp-i18n', 'wp-hooks', 'wp-compose', 'wp-data', 'wp-plugins', 'razuna-picker' ),
+			Plugin::asset_version( 'assets/js/block.js' ),
 			true
 		);
 	}
@@ -98,6 +114,7 @@ final class Block {
 		if ( '' === $url ) {
 			return '';
 		}
+		$full_url = '' !== $full_url ? $full_url : $url;
 
 		$wrapper = function_exists( 'get_block_wrapper_attributes' )
 			? get_block_wrapper_attributes( array( 'class' => 'razuna-asset' ) )
@@ -127,6 +144,108 @@ final class Block {
 		}
 
 		return sprintf( '<figure %s>%s</figure>', $wrapper, $inner );
+	}
+
+	/**
+	 * Server render for the direct-link Razuna Gallery block.
+	 *
+	 * @param array $attributes Block attributes.
+	 */
+	public function render_gallery( $attributes ): string {
+		$attributes = is_array( $attributes ) ? $attributes : array();
+		$items      = isset( $attributes['items'] ) && is_array( $attributes['items'] ) ? $attributes['items'] : array();
+		$items      = array_values( array_filter( $items, 'is_array' ) );
+
+		if ( empty( $items ) ) {
+			return '';
+		}
+
+		$columns = isset( $attributes['columns'] ) ? (int) $attributes['columns'] : 3;
+		$columns = max( 1, min( 8, $columns ) );
+		$classes = array(
+			'razuna-gallery',
+			'wp-block-gallery',
+			'has-nested-images',
+			'columns-' . $columns,
+		);
+		if ( ! empty( $attributes['imageCrop'] ) ) {
+			$classes[] = 'is-cropped';
+		}
+
+		$wrapper = function_exists( 'get_block_wrapper_attributes' )
+			? get_block_wrapper_attributes( array( 'class' => implode( ' ', $classes ) ) )
+			: 'class="' . esc_attr( implode( ' ', $classes ) ) . '"';
+
+		$html = '';
+		foreach ( $items as $item ) {
+			$item_html = $this->render_gallery_item( $item, ! empty( $attributes['linkToOriginal'] ) );
+			if ( '' !== $item_html ) {
+				$html .= $item_html;
+			}
+		}
+
+		if ( '' === $html ) {
+			return '';
+		}
+
+		$caption = isset( $attributes['caption'] ) ? trim( (string) $attributes['caption'] ) : '';
+		if ( '' !== $caption ) {
+			$html .= '<figcaption class="blocks-gallery-caption wp-element-caption">' . wp_kses_post( $caption ) . '</figcaption>';
+		}
+
+		return sprintf( '<figure %s>%s</figure>', $wrapper, $html );
+	}
+
+	private function render_gallery_item( array $item, bool $link_to_original ): string {
+		$url = isset( $item['url'] ) ? (string) $item['url'] : '';
+		if ( '' === $url && ! empty( $item['fileId'] ) && $this->settings->is_connected() ) {
+			$file = $this->api->get_file( (string) $item['fileId'] );
+			if ( ! is_wp_error( $file ) ) {
+				$url = ! empty( $file['preview_url'] ) ? (string) $file['preview_url'] : ( ! empty( $file['full_url'] ) ? (string) $file['full_url'] : '' );
+				if ( empty( $item['fullUrl'] ) && ! empty( $file['full_url'] ) ) {
+					$item['fullUrl'] = $file['full_url'];
+				}
+				if ( empty( $item['alt'] ) && ! empty( $file['name'] ) ) {
+					$item['alt'] = $file['name'];
+				}
+			}
+		}
+
+		if ( '' === $url ) {
+			return '';
+		}
+
+		$alt = isset( $item['alt'] ) ? (string) $item['alt'] : ( isset( $item['name'] ) ? (string) $item['name'] : '' );
+		$full_url = isset( $item['fullUrl'] ) ? (string) $item['fullUrl'] : ( isset( $item['full_url'] ) ? (string) $item['full_url'] : '' );
+		$full_url = '' !== $full_url ? $full_url : $url;
+		$width = ! empty( $item['width'] ) ? (int) $item['width'] : 0;
+		$height = ! empty( $item['height'] ) ? (int) $item['height'] : 0;
+		$dims = '';
+
+		if ( $width > 0 ) {
+			$dims .= ' width="' . $width . '"';
+		}
+		if ( $height > 0 ) {
+			$dims .= ' height="' . $height . '"';
+		}
+
+		$image = sprintf(
+			'<img src="%s" alt="%s"%s loading="lazy" />',
+			esc_url( $url ),
+			esc_attr( $alt ),
+			$dims
+		);
+
+		if ( $link_to_original && '' !== $full_url ) {
+			$image = sprintf( '<a href="%s">%s</a>', esc_url( $full_url ), $image );
+		}
+
+		$caption = isset( $item['caption'] ) ? trim( (string) $item['caption'] ) : '';
+		if ( '' !== $caption ) {
+			$image .= '<figcaption class="wp-element-caption blocks-gallery-item__caption">' . wp_kses_post( $caption ) . '</figcaption>';
+		}
+
+		return '<figure class="wp-block-image size-large razuna-gallery__item">' . $image . '</figure>';
 	}
 
 	private function image_dimensions( array $attributes, string $url ): array {

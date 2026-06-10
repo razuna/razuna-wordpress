@@ -44,6 +44,13 @@
 .razuna-picker__search {
 	min-width: 240px;
 }
+.razuna-picker__type {
+	min-width: 120px;
+}
+.razuna-picker__count {
+	font-weight: 600;
+	color: #1d2327;
+}
 
 /* Insert-options bar — a flex row at the bottom of the picker (outside the grid),
    sticky so it stays in view once a file is selected */
@@ -91,6 +98,18 @@
 }
 .razuna-picker__insert {
 	margin-left: auto;
+}
+.razuna-media-button .dashicons {
+	vertical-align: text-top;
+}
+.razuna-media-library-button {
+	margin-left: 6px;
+}
+.razuna-media-frame-button {
+	margin-right: 8px !important;
+}
+.media-router .razuna-media-router-button {
+	color: #135e96;
 }
 .razuna-asset__file {
 	display: inline-block;
@@ -180,12 +199,14 @@
 	position: fixed;
 	inset: 0;
 	background: rgba( 0, 0, 0, .6 );
-	z-index: 160000;
+	z-index: 300000;
 	display: flex;
 	align-items: center;
 	justify-content: center;
 }
 .razuna-overlay__dialog {
+	position: relative;
+	z-index: 1;
 	background: #fff;
 	width: min( 900px, 92vw );
 	max-height: 88vh;
@@ -235,4 +256,36 @@
 .razuna-asset img {
 	max-width: 100%;
 	height: auto;
+}
+.razuna-gallery {
+	margin-bottom: 1em;
+}
+.razuna-gallery img {
+	max-width: 100%;
+	height: auto;
+}
+.razuna-gallery-editor .razuna-gallery-preview {
+	display: grid;
+	gap: 8px;
+	margin-bottom: 12px;
+}
+.razuna-gallery-editor .razuna-gallery-preview.columns-1 {
+	grid-template-columns: 1fr;
+}
+.razuna-gallery-editor .razuna-gallery-preview.columns-2 {
+	grid-template-columns: repeat( 2, minmax( 0, 1fr ) );
+}
+.razuna-gallery-editor .razuna-gallery-preview.columns-3,
+.razuna-gallery-editor .razuna-gallery-preview.columns-4,
+.razuna-gallery-editor .razuna-gallery-preview.columns-5,
+.razuna-gallery-editor .razuna-gallery-preview.columns-6,
+.razuna-gallery-editor .razuna-gallery-preview.columns-7,
+.razuna-gallery-editor .razuna-gallery-preview.columns-8 {
+	grid-template-columns: repeat( 3, minmax( 0, 1fr ) );
+}
+.razuna-gallery-editor .razuna-gallery-preview img {
+	width: 100%;
+	aspect-ratio: 1 / 1;
+	object-fit: cover;
+	background: #f0f0f1;
 }
